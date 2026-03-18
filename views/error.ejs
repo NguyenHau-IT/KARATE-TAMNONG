@@ -1,3 +1,15 @@
-<h1><%= message %></h1>
-<h2><%= error.status %></h2>
-<pre><%= error.stack %></pre>
+<%- include('partials/header', { title: 'Lỗi hệ thống', activePage: '' }) %>
+
+<div class="container">
+  <div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+      <h1 class="h3 mb-3"><%= message %></h1>
+      <p class="text-secondary mb-2">Mã lỗi: <%= error.status || 500 %></p>
+      <% if (error && error.stack) { %>
+        <pre class="mb-0 small bg-body-tertiary border rounded p-3 overflow-auto"><%= error.stack %></pre>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

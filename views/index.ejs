@@ -1,11 +1,118 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <title><%= title %></title>
-    <link rel='stylesheet' href='/stylesheets/style.css' />
-  </head>
-  <body>
-    <h1><%= title %></h1>
-    <p>Welcome to <%= title %></p>
-  </body>
-</html>
+<%- include('partials/header', { title, activePage }) %>
+
+<div class="container">
+  <div class="p-4 p-lg-5 mb-4 bg-white border rounded-4 shadow-sm">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-8">
+        <p class="text-uppercase text-secondary small fw-semibold mb-2">Trang quản trị</p>
+        <h1 class="display-6 fw-semibold mb-3">Bảng điều khiển quản lý Karate Tamnong</h1>
+        <p class="text-secondary mb-0">
+          Theo dõi dữ liệu hiện có, truy cập nhanh các khu vực quản trị và nắm tình trạng cập nhật gần nhất.
+        </p>
+      </div>
+      <div class="col-lg-4 text-lg-end">
+        <a class="btn btn-primary" href="/bac-dai">Đi tới quản lý bậc đai</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <p class="text-secondary small mb-2">Tổng bậc đai</p>
+          <h2 class="display-6 mb-1"><%= stats.totalBacDai %></h2>
+          <p class="text-secondary mb-0">Số bản ghi hiện có trong bảng <code>bac_dai</code>.</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <p class="text-secondary small mb-2">Mô-đun đang quản lý</p>
+          <h2 class="display-6 mb-1"><%= stats.moduleCount %></h2>
+          <p class="text-secondary mb-0">Hiện tại đã có mô-đun quản lý bậc đai hoạt động.</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <p class="text-secondary small mb-2">Cập nhật gần nhất</p>
+          <h2 class="h4 mb-1">
+            <%= stats.latestUpdatedAt ? new Date(stats.latestUpdatedAt).toLocaleDateString('vi-VN') : 'Chưa có' %>
+          </h2>
+          <p class="text-secondary mb-0">
+            <%= stats.latestUpdatedAt ? new Date(stats.latestUpdatedAt).toLocaleTimeString('vi-VN') : 'Chưa có dữ liệu để theo dõi' %>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 mb-0">Bậc đai mới nhất</h2>
+            <a class="btn btn-sm btn-outline-secondary" href="/bac-dai">Xem tất cả</a>
+          </div>
+
+          <% if (!latestBacDai.length) { %>
+            <div class="alert alert-light border mb-0">Chưa có dữ liệu bậc đai để hiển thị.</div>
+          <% } else { %>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>ID</th>
+                    <th>Tên bậc đai</th>
+                    <th>Mô tả</th>
+                    <th>Ngày tạo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% latestBacDai.forEach(function(item) { %>
+                    <tr>
+                      <td><%= item.id %></td>
+                      <td class="fw-semibold"><%= item.ten_bac_dai %></td>
+                      <td><%= item.mo_ta || 'Chưa có mô tả' %></td>
+                      <td><%= item.ngay_tao ? new Date(item.ngay_tao).toLocaleString('vi-VN') : '' %></td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h5 mb-3">Truy cập nhanh</h2>
+
+          <div class="d-grid gap-3">
+            <% quickLinks.forEach(function(link) { %>
+              <a class="text-decoration-none" href="<%= link.href %>">
+                <div class="border rounded-4 p-3 bg-body-tertiary quick-link-card">
+                  <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div>
+                      <h3 class="h6 mb-1 text-dark"><%= link.title %></h3>
+                      <p class="text-secondary mb-0"><%= link.description %></p>
+                    </div>
+                    <span class="badge text-bg-light border text-dark"><%= link.action %></span>
+                  </div>
+                </div>
+              </a>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

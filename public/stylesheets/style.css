@@ -1,8 +1,31 @@
 body {
-  padding: 50px;
-  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+  min-height: 100vh;
 }
 
-a {
-  color: #00B7FF;
+.navbar-brand {
+  letter-spacing: 0.02em;
+}
+
+.table td,
+.table th {
+  vertical-align: middle;
+}
+
+.card {
+  border-radius: 1rem;
+}
+
+.quick-link-card {
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.quick-link-card:hover {
+  background-color: var(--bs-white) !important;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 960px) {
+  .table-responsive {
+    font-size: 0.95rem;
+  }
 }
