@@ -1,0 +1,143 @@
+<%- include('partials/header', { title, activePage: 'diem-danh' }) %>
+
+<div class="container">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+      <p class="text-uppercase text-secondary small fw-semibold mb-1">Karate Tamnong</p>
+      <h1 class="h2 mb-2">Điểm danh buổi học</h1>
+      <p class="text-secondary mb-0">Chọn buổi học và thao tác điểm danh trực tiếp trên giao diện.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/diem-danh">Làm mới</a>
+  </div>
+
+  <% if (message) { %>
+    <div class="alert alert-success"><%= message %></div>
+  <% } %>
+  <% if (errorMessage) { %>
+    <div class="alert alert-danger"><%= errorMessage %></div>
+  <% } %>
+
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <form method="get" action="/diem-danh" class="row g-3 align-items-end">
+        <div class="col-lg-8">
+          <label class="form-label" for="buoi_hoc_id">Chọn buổi học</label>
+          <select class="form-select" name="buoi_hoc_id" id="buoi_hoc_id" required>
+            <option value="">Chọn buổi học</option>
+            <% buoiHocList.forEach(function(item) { %>
+              <option value="<%= item.id %>" <%= selectedBuoiHocId === item.id ? 'selected' : '' %>>
+                #<%= item.id %> - <%= item.lop_vo ? item.lop_vo.ten_lop : ('Lớp #' + item.lop_vo_id) %> - <%= item.ngay_hoc %>
+                (<%= item.gio_bat_dau || '--:--' %> - <%= item.gio_ket_thuc || '--:--' %>)
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-lg-4 d-grid">
+          <button class="btn btn-primary" type="submit">Xem danh sách điểm danh</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <% if (selectedBuoiHocId && buoiHoc) { %>
+    <div class="row g-3 mb-4">
+      <div class="col-md-2">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Tổng</div><div class="h4 mb-0"><%= summary.tong_vo_sinh %></div></div></div>
+      </div>
+      <div class="col-md-2">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Đã điểm danh</div><div class="h4 mb-0"><%= summary.da_diem_danh %></div></div></div>
+      </div>
+      <div class="col-md-2">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Có mặt</div><div class="h4 mb-0"><%= summary.co_mat %></div></div></div>
+      </div>
+      <div class="col-md-2">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Vắng có phép</div><div class="h4 mb-0"><%= summary.vang_co_phep %></div></div></div>
+      </div>
+      <div class="col-md-2">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Vắng không phép</div><div class="h4 mb-0"><%= summary.vang_khong_phep %></div></div></div>
+      </div>
+      <div class="col-md-2">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Chưa cập nhật</div><div class="h4 mb-0"><%= summary.chua_cap_nhat %></div></div></div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Võ sinh</th>
+                <th>Trạng thái hiện tại</th>
+                <th>Cập nhật</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!danhSachDiemDanh.length) { %>
+                <tr><td colspan="3" class="text-center text-secondary py-4">Lớp chưa có võ sinh để điểm danh.</td></tr>
+              <% } %>
+              <% danhSachDiemDanh.forEach(function(item) { %>
+                <tr>
+                  <td>
+                    <div class="fw-semibold"><%= item.ho_ten || ('#' + item.vo_sinh_id) %></div>
+                    <div class="small text-secondary">ID võ sinh: <%= item.vo_sinh_id %></div>
+                  </td>
+                  <td>
+                    <% if (!item.trang_thai_diem_danh) { %>
+                      <span class="badge text-bg-secondary">Chưa cập nhật</span>
+                    <% } else if (item.trang_thai_diem_danh === 'co_mat') { %>
+                      <span class="badge text-bg-success">Có mặt</span>
+                    <% } else if (item.loai_vang === 'co_phep') { %>
+                      <span class="badge text-bg-warning">Vắng có phép</span>
+                    <% } else { %>
+                      <span class="badge text-bg-danger">Vắng không phép</span>
+                    <% } %>
+                    <div class="small text-secondary mt-1"><%= item.ly_do || '---' %></div>
+                  </td>
+                  <td>
+                    <form method="post" action="/diem-danh/cap-nhat" class="row g-2">
+                      <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId %>" />
+                      <input type="hidden" name="vo_sinh_id" value="<%= item.vo_sinh_id %>" />
+
+                      <div class="col-md-4">
+                        <select class="form-select form-select-sm" name="trang_thai_diem_danh" required>
+                          <option value="co_mat" <%= item.trang_thai_diem_danh === 'co_mat' ? 'selected' : '' %>>Có mặt</option>
+                          <option value="vang" <%= item.trang_thai_diem_danh === 'vang' ? 'selected' : '' %>>Vắng</option>
+                        </select>
+                      </div>
+
+                      <div class="col-md-4">
+                        <select class="form-select form-select-sm" name="loai_vang">
+                          <option value="" <%= !item.loai_vang ? 'selected' : '' %>>Không áp dụng</option>
+                          <option value="co_phep" <%= item.loai_vang === 'co_phep' ? 'selected' : '' %>>Có phép</option>
+                          <option value="khong_phep" <%= item.loai_vang === 'khong_phep' ? 'selected' : '' %>>Không phép</option>
+                        </select>
+                      </div>
+
+                      <div class="col-md-3">
+                        <input
+                          class="form-control form-control-sm"
+                          type="text"
+                          name="ly_do"
+                          maxlength="255"
+                          placeholder="Lý do"
+                          value="<%= item.ly_do || '' %>"
+                        />
+                      </div>
+
+                      <div class="col-md-1 d-grid">
+                        <button class="btn btn-sm btn-primary" type="submit">Lưu</button>
+                      </div>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

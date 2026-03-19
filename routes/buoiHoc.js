@@ -18,6 +18,21 @@ function normalizeText(value) {
   return (value || '').trim();
 }
 
+function createRedirectWithMessage(path, message, error) {
+  const searchParams = new URLSearchParams();
+
+  if (message) {
+    searchParams.set('message', message);
+  }
+
+  if (error) {
+    searchParams.set('error', error);
+  }
+
+  const query = searchParams.toString();
+  return query ? `${path}?${query}` : path;
+}
+
 function isValidDateString(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
@@ -74,16 +89,55 @@ function normalizeCreatePayload(body) {
   };
 }
 
-router.post('/', async function(req, res) {
+async function loadLopVoList() {
+  const { data, error } = await supabase.from('lop_vo').select('id, ten_lop').order('id', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+async function loadBuoiHocList() {
+  const { data, error } = await supabase
+    .from('buoi_hoc')
+    .select('id, lop_vo_id, ngay_hoc, gio_bat_dau, gio_ket_thuc, ghi_chu, ngay_tao, ngay_cap_nhat, lop_vo:lop_vo_id(id, ten_lop)')
+    .order('ngay_hoc', { ascending: false })
+    .order('gio_bat_dau', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+router.get('/', async function(req, res, next) {
+  try {
+    const [lopVoList, buoiHocList] = await Promise.all([loadLopVoList(), loadBuoiHocList()]);
+
+    return res.render('buoi-hoc', {
+      title: 'Quản lý buổi học',
+      activePage: 'buoi-hoc',
+      lopVoList,
+      buoiHocList,
+      message: req.query.message || '',
+      errorMessage: req.query.error || ''
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/tao', async function(req, res) {
   try {
     const payload = normalizeCreatePayload(req.body);
     const errors = validateCreatePayload(payload);
 
     if (errors.length) {
-      return res.status(400).json({
-        message: 'Dữ liệu không hợp lệ',
-        errors
-      });
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', errors[0].reason));
     }
 
     const { data: lopVo, error: lopVoError } = await supabase
@@ -93,11 +147,11 @@ router.post('/', async function(req, res) {
       .maybeSingle();
 
     if (lopVoError) {
-      return res.status(500).json({ message: lopVoError.message });
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', lopVoError.message));
     }
 
     if (!lopVo) {
-      return res.status(404).json({ message: 'Không tìm thấy lớp võ' });
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', 'Không tìm thấy lớp võ'));
     }
 
     let duplicateQuery = supabase
@@ -117,11 +171,13 @@ router.post('/', async function(req, res) {
     const { data: duplicateRows, error: duplicateError } = await duplicateQuery.limit(1);
 
     if (duplicateError) {
-      return res.status(500).json({ message: duplicateError.message });
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', duplicateError.message));
     }
 
     if (duplicateRows && duplicateRows.length) {
-      return res.status(409).json({ message: 'Buổi học đã tồn tại với lớp, ngày và khung giờ này' });
+      return res.redirect(
+        createRedirectWithMessage('/buoi-hoc', '', 'Buổi học đã tồn tại với lớp, ngày và khung giờ này')
+      );
     }
 
     const now = new Date().toISOString();
@@ -140,45 +196,32 @@ router.post('/', async function(req, res) {
       .single();
 
     if (error) {
-      return res.status(500).json({ message: error.message });
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
     }
 
-    return res.status(201).json({
-      message: 'Tạo buổi học thành công',
-      data
-    });
+    return res.redirect(createRedirectWithMessage('/buoi-hoc', 'Tạo buổi học thành công', ''));
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
   }
 });
 
-router.get('/:id', async function(req, res) {
+router.post('/xoa/:id', async function(req, res) {
   try {
     const id = parsePositiveInt(req.params.id);
 
     if (!id) {
-      return res.status(400).json({
-        message: 'Dữ liệu không hợp lệ',
-        errors: [{ field: 'id', reason: 'id phải là số nguyên dương' }]
-      });
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', 'ID buổi học không hợp lệ'));
     }
 
-    const { data, error } = await supabase.from('buoi_hoc').select('*').eq('id', id).maybeSingle();
+    const { error } = await supabase.from('buoi_hoc').delete().eq('id', id);
 
     if (error) {
-      return res.status(500).json({ message: error.message });
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
     }
 
-    if (!data) {
-      return res.status(404).json({ message: 'Không tìm thấy buổi học' });
-    }
-
-    return res.json({
-      message: 'Lấy chi tiết buổi học thành công',
-      data
-    });
+    return res.redirect(createRedirectWithMessage('/buoi-hoc', 'Xóa buổi học thành công', ''));
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
   }
 });
 

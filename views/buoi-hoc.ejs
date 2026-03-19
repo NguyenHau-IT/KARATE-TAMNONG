@@ -1,0 +1,111 @@
+<%- include('partials/header', { title, activePage: 'buoi-hoc' }) %>
+
+<div class="container">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+      <p class="text-uppercase text-secondary small fw-semibold mb-1">Karate Tamnong</p>
+      <h1 class="h2 mb-2">Quản lý buổi học</h1>
+      <p class="text-secondary mb-0">Tạo và theo dõi danh sách buổi học theo lớp võ.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/buoi-hoc">Làm mới danh sách</a>
+  </div>
+
+  <% if (message) { %>
+    <div class="alert alert-success"><%= message %></div>
+  <% } %>
+  <% if (errorMessage) { %>
+    <div class="alert alert-danger"><%= errorMessage %></div>
+  <% } %>
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h2 class="h5 mb-3">Tạo buổi học</h2>
+          <form method="post" action="/buoi-hoc/tao" class="vstack gap-3">
+            <div>
+              <label class="form-label" for="lop_vo_id">Lớp võ</label>
+              <select class="form-select" id="lop_vo_id" name="lop_vo_id" required>
+                <option value="">Chọn lớp võ</option>
+                <% lopVoList.forEach(function(item) { %>
+                  <option value="<%= item.id %>"><%= item.ten_lop %> (#<%= item.id %>)</option>
+                <% }) %>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="ngay_hoc">Ngày học</label>
+              <input class="form-control" type="date" id="ngay_hoc" name="ngay_hoc" required />
+            </div>
+            <div class="row g-3">
+              <div class="col-6">
+                <label class="form-label" for="gio_bat_dau">Giờ bắt đầu</label>
+                <input class="form-control" type="time" id="gio_bat_dau" name="gio_bat_dau" />
+              </div>
+              <div class="col-6">
+                <label class="form-label" for="gio_ket_thuc">Giờ kết thúc</label>
+                <input class="form-control" type="time" id="gio_ket_thuc" name="gio_ket_thuc" />
+              </div>
+            </div>
+            <div>
+              <label class="form-label" for="ghi_chu">Ghi chú</label>
+              <textarea class="form-control" id="ghi_chu" name="ghi_chu" rows="3" maxlength="255"></textarea>
+            </div>
+            <button class="btn btn-primary" type="submit">Tạo buổi học</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 mb-0">Danh sách buổi học</h2>
+            <span class="badge text-bg-secondary"><%= buoiHocList.length %> mục</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>Lớp võ</th>
+                  <th>Ngày học</th>
+                  <th>Khung giờ</th>
+                  <th>Ghi chú</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (!buoiHocList.length) { %>
+                  <tr>
+                    <td colspan="6" class="text-center text-secondary py-4">Chưa có dữ liệu buổi học.</td>
+                  </tr>
+                <% } %>
+                <% buoiHocList.forEach(function(item) { %>
+                  <tr>
+                    <td><%= item.id %></td>
+                    <td><%= item.lop_vo ? item.lop_vo.ten_lop : ('#' + item.lop_vo_id) %></td>
+                    <td><%= item.ngay_hoc %></td>
+                    <td><%= item.gio_bat_dau || '--:--' %> - <%= item.gio_ket_thuc || '--:--' %></td>
+                    <td><%= item.ghi_chu || '---' %></td>
+                    <td>
+                      <div class="d-flex gap-2">
+                        <a class="btn btn-sm btn-outline-primary" href="/diem-danh?buoi_hoc_id=<%= item.id %>">Điểm danh</a>
+                        <form method="post" action="/buoi-hoc/xoa/<%= item.id %>" onsubmit="return confirm('Xóa buổi học này?');">
+                          <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

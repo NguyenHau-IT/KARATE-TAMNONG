@@ -33,6 +33,21 @@ function normalizeNullableText(value) {
   return normalized || null;
 }
 
+function createRedirectWithMessage(path, message, error) {
+  const searchParams = new URLSearchParams();
+
+  if (message) {
+    searchParams.set('message', message);
+  }
+
+  if (error) {
+    searchParams.set('error', error);
+  }
+
+  const query = searchParams.toString();
+  return query ? `${path}?${query}` : path;
+}
+
 function validateStatusPayload(payload) {
   const errors = [];
 
@@ -83,156 +98,157 @@ async function getBuoiHocById(buoiHocId) {
   return data;
 }
 
-router.get('/', async function(req, res) {
-  try {
-    const buoiHocId = parsePositiveInt(req.query.buoi_hoc_id);
+async function loadBuoiHocList() {
+  const { data, error } = await supabase
+    .from('buoi_hoc')
+    .select('id, ngay_hoc, gio_bat_dau, gio_ket_thuc, lop_vo:lop_vo_id(id, ten_lop)')
+    .order('ngay_hoc', { ascending: false })
+    .order('gio_bat_dau', { ascending: false })
+    .limit(200);
 
-    if (!buoiHocId) {
-      return res.status(400).json({
-        message: 'Dữ liệu không hợp lệ',
-        errors: [{ field: 'buoi_hoc_id', reason: 'buoi_hoc_id phải là số nguyên dương' }]
-      });
-    }
-
-    const buoiHoc = await getBuoiHocById(buoiHocId);
-
-    if (!buoiHoc) {
-      return res.status(404).json({ message: 'Không tìm thấy buổi học' });
-    }
-
-    const [{ data: classStudents, error: classStudentsError }, { data: attendanceRows, error: attendanceError }] =
-      await Promise.all([
-        supabase
-          .from('vo_sinh_lop')
-          .select('vo_sinh_id, vo_sinh:vo_sinh_id(id, ho_ten)')
-          .eq('lop_vo_id', buoiHoc.lop_vo_id),
-        supabase
-          .from('diem_danh')
-          .select('id, buoi_hoc_id, vo_sinh_id, trang_thai_diem_danh, loai_vang, ly_do, ngay_cap_nhat')
-          .eq('buoi_hoc_id', buoiHocId)
-      ]);
-
-    if (classStudentsError) {
-      return res.status(500).json({ message: classStudentsError.message });
-    }
-
-    if (attendanceError) {
-      return res.status(500).json({ message: attendanceError.message });
-    }
-
-    const attendanceMap = new Map();
-
-    (attendanceRows || []).forEach(function(item) {
-      if (!attendanceMap.has(item.vo_sinh_id)) {
-        attendanceMap.set(item.vo_sinh_id, item);
-      }
-    });
-
-    const data = (classStudents || []).map(function(item) {
-      const attendance = attendanceMap.get(item.vo_sinh_id);
-
-      return {
-        id: attendance ? attendance.id : null,
-        buoi_hoc_id: buoiHocId,
-        vo_sinh_id: item.vo_sinh_id,
-        ho_ten: item.vo_sinh ? item.vo_sinh.ho_ten : null,
-        trang_thai_diem_danh: attendance ? attendance.trang_thai_diem_danh : null,
-        loai_vang: attendance ? attendance.loai_vang : null,
-        ly_do: attendance ? attendance.ly_do : null,
-        ngay_cap_nhat: attendance ? attendance.ngay_cap_nhat : null
-      };
-    });
-
-    return res.json({
-      message: 'Lấy danh sách điểm danh thành công',
-      data
-    });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
+  if (error) {
+    throw error;
   }
-});
 
-router.get('/tong-hop', async function(req, res) {
-  try {
-    const buoiHocId = parsePositiveInt(req.query.buoi_hoc_id);
+  return data || [];
+}
 
-    if (!buoiHocId) {
-      return res.status(400).json({
-        message: 'Dữ liệu không hợp lệ',
-        errors: [{ field: 'buoi_hoc_id', reason: 'buoi_hoc_id phải là số nguyên dương' }]
-      });
-    }
-
-    const buoiHoc = await getBuoiHocById(buoiHocId);
-
-    if (!buoiHoc) {
-      return res.status(404).json({ message: 'Không tìm thấy buổi học' });
-    }
-
-    const [
-      { count: totalVoSinh, error: totalError },
-      { count: daDiemDanh, error: attendanceCountError },
-      { count: coMat, error: coMatError },
-      { count: vangCoPhep, error: vangCoPhepError },
-      { count: vangKhongPhep, error: vangKhongPhepError }
-    ] = await Promise.all([
-      supabase.from('vo_sinh_lop').select('*', { count: 'exact', head: true }).eq('lop_vo_id', buoiHoc.lop_vo_id),
-      supabase.from('diem_danh').select('*', { count: 'exact', head: true }).eq('buoi_hoc_id', buoiHocId),
+async function loadDanhSachDiemDanh(buoiHoc) {
+  const [{ data: classStudents, error: classStudentsError }, { data: attendanceRows, error: attendanceError }] =
+    await Promise.all([
+      supabase
+        .from('vo_sinh_lop')
+        .select('vo_sinh_id, vo_sinh:vo_sinh_id(id, ho_ten, bac_dai_id, gioi_tinh, nam_sinh)')
+        .eq('lop_vo_id', buoiHoc.lop_vo_id),
       supabase
         .from('diem_danh')
-        .select('*', { count: 'exact', head: true })
-        .eq('buoi_hoc_id', buoiHocId)
-        .eq('trang_thai_diem_danh', TRANG_THAI.CO_MAT),
-      supabase
-        .from('diem_danh')
-        .select('*', { count: 'exact', head: true })
-        .eq('buoi_hoc_id', buoiHocId)
-        .eq('trang_thai_diem_danh', TRANG_THAI.VANG)
-        .eq('loai_vang', LOAI_VANG.CO_PHEP),
-      supabase
-        .from('diem_danh')
-        .select('*', { count: 'exact', head: true })
-        .eq('buoi_hoc_id', buoiHocId)
-        .eq('trang_thai_diem_danh', TRANG_THAI.VANG)
-        .eq('loai_vang', LOAI_VANG.KHONG_PHEP)
+        .select('id, buoi_hoc_id, vo_sinh_id, trang_thai_diem_danh, loai_vang, ly_do, ngay_cap_nhat')
+        .eq('buoi_hoc_id', buoiHoc.id)
     ]);
 
-    const firstError = totalError || attendanceCountError || coMatError || vangCoPhepError || vangKhongPhepError;
+  if (classStudentsError) {
+    throw classStudentsError;
+  }
 
-    if (firstError) {
-      return res.status(500).json({ message: firstError.message });
+  if (attendanceError) {
+    throw attendanceError;
+  }
+
+  const attendanceMap = new Map();
+
+  (attendanceRows || []).forEach(function(item) {
+    if (!attendanceMap.has(item.vo_sinh_id)) {
+      attendanceMap.set(item.vo_sinh_id, item);
+    }
+  });
+
+  return (classStudents || []).map(function(item) {
+    const attendance = attendanceMap.get(item.vo_sinh_id);
+
+    return {
+      id: attendance ? attendance.id : null,
+      buoi_hoc_id: buoiHoc.id,
+      vo_sinh_id: item.vo_sinh_id,
+      ho_ten: item.vo_sinh ? item.vo_sinh.ho_ten : null,
+      bac_dai: null,
+      trang_thai_diem_danh: attendance ? attendance.trang_thai_diem_danh : null,
+      loai_vang: attendance ? attendance.loai_vang : null,
+      ly_do: attendance ? attendance.ly_do : null,
+      ngay_cap_nhat: attendance ? attendance.ngay_cap_nhat : null
+    };
+  });
+}
+
+function buildSummary(danhSach) {
+  const summary = {
+    tong_vo_sinh: danhSach.length,
+    da_diem_danh: 0,
+    co_mat: 0,
+    vang_co_phep: 0,
+    vang_khong_phep: 0,
+    chua_cap_nhat: 0
+  };
+
+  danhSach.forEach(function(item) {
+    if (!item.trang_thai_diem_danh) {
+      summary.chua_cap_nhat += 1;
+      return;
     }
 
-    const tongVoSinh = totalVoSinh || 0;
-    const da = daDiemDanh || 0;
+    summary.da_diem_danh += 1;
 
-    return res.json({
-      message: 'Lấy tổng hợp điểm danh thành công',
-      data: {
-        buoi_hoc_id: buoiHocId,
-        tong_vo_sinh: tongVoSinh,
-        da_diem_danh: da,
-        co_mat: coMat || 0,
-        vang_co_phep: vangCoPhep || 0,
-        vang_khong_phep: vangKhongPhep || 0,
-        chua_cap_nhat: Math.max(tongVoSinh - da, 0)
+    if (item.trang_thai_diem_danh === TRANG_THAI.CO_MAT) {
+      summary.co_mat += 1;
+      return;
+    }
+
+    if (item.trang_thai_diem_danh === TRANG_THAI.VANG && item.loai_vang === LOAI_VANG.CO_PHEP) {
+      summary.vang_co_phep += 1;
+      return;
+    }
+
+    if (item.trang_thai_diem_danh === TRANG_THAI.VANG && item.loai_vang === LOAI_VANG.KHONG_PHEP) {
+      summary.vang_khong_phep += 1;
+    }
+  });
+
+  return summary;
+}
+
+router.get('/', async function(req, res, next) {
+  try {
+    const selectedBuoiHocId = parsePositiveInt(req.query.buoi_hoc_id);
+    const buoiHocList = await loadBuoiHocList();
+
+    let buoiHoc = null;
+    let danhSachDiemDanh = [];
+    let summary = {
+      tong_vo_sinh: 0,
+      da_diem_danh: 0,
+      co_mat: 0,
+      vang_co_phep: 0,
+      vang_khong_phep: 0,
+      chua_cap_nhat: 0
+    };
+    let errorMessage = req.query.error || '';
+
+    if (selectedBuoiHocId) {
+      buoiHoc = await getBuoiHocById(selectedBuoiHocId);
+
+      if (!buoiHoc) {
+        errorMessage = errorMessage || 'Không tìm thấy buổi học';
+      } else {
+        danhSachDiemDanh = await loadDanhSachDiemDanh(buoiHoc);
+        summary = buildSummary(danhSachDiemDanh);
       }
+    }
+
+    return res.render('diem-danh', {
+      title: 'Điểm danh buổi học',
+      activePage: 'diem-danh',
+      buoiHocList,
+      selectedBuoiHocId: selectedBuoiHocId || null,
+      buoiHoc,
+      danhSachDiemDanh,
+      summary,
+      message: req.query.message || '',
+      errorMessage
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return next(error);
   }
 });
 
-router.put('/:id/trang-thai', async function(req, res) {
+router.post('/cap-nhat', async function(req, res) {
   try {
-    const id = parsePositiveInt(req.params.id);
+    const buoiHocId = parsePositiveInt(req.body.buoi_hoc_id);
+    const voSinhId = parsePositiveInt(req.body.vo_sinh_id);
 
-    if (!id) {
-      return res.status(400).json({
-        message: 'Dữ liệu không hợp lệ',
-        errors: [{ field: 'id', reason: 'id phải là số nguyên dương' }]
-      });
+    if (!buoiHocId || !voSinhId) {
+      return res.redirect(createRedirectWithMessage('/diem-danh', '', 'Thiếu thông tin buổi học hoặc võ sinh'));
     }
+
+    const redirectBase = `/diem-danh?buoi_hoc_id=${buoiHocId}`;
 
     const payload = {
       trang_thai_diem_danh: normalizeText(req.body.trang_thai_diem_danh),
@@ -243,103 +259,35 @@ router.put('/:id/trang-thai', async function(req, res) {
     const errors = validateStatusPayload(payload);
 
     if (errors.length) {
-      return res.status(400).json({
-        message: 'Dữ liệu không hợp lệ',
-        errors
-      });
+      return res.redirect(createRedirectWithMessage(redirectBase, '', errors[0].reason));
     }
 
-    const { data: current, error: currentError } = await supabase
-      .from('diem_danh')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (currentError) {
-      return res.status(500).json({ message: currentError.message });
-    }
-
-    if (!current) {
-      return res.status(404).json({ message: 'Không tìm thấy bản ghi điểm danh' });
-    }
-
-    if (
-      current.trang_thai_diem_danh === payload.trang_thai_diem_danh &&
-      (current.loai_vang || null) === payload.loai_vang &&
-      (current.ly_do || null) === payload.ly_do
-    ) {
-      return res.json({
-        message: 'Cập nhật trạng thái điểm danh thành công',
-        data: current
-      });
-    }
-
-    const { data, error } = await supabase
-      .from('diem_danh')
-      .update({
-        trang_thai_diem_danh: payload.trang_thai_diem_danh,
-        loai_vang: payload.trang_thai_diem_danh === TRANG_THAI.CO_MAT ? null : payload.loai_vang,
-        ly_do: payload.ly_do,
-        ngay_cap_nhat: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select('*')
-      .single();
-
-    if (error) {
-      return res.status(500).json({ message: error.message });
-    }
-
-    return res.json({
-      message: 'Cập nhật trạng thái điểm danh thành công',
-      data
-    });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-});
-
-router.post('/upsert', async function(req, res) {
-  try {
-    const buoiHocId = parsePositiveInt(req.body.buoi_hoc_id);
-    const voSinhId = parsePositiveInt(req.body.vo_sinh_id);
-    const payload = {
-      trang_thai_diem_danh: normalizeText(req.body.trang_thai_diem_danh),
-      loai_vang: normalizeNullableText(req.body.loai_vang),
-      ly_do: normalizeNullableText(req.body.ly_do)
-    };
-
-    const errors = [];
-
-    if (!buoiHocId) {
-      errors.push({ field: 'buoi_hoc_id', reason: 'buoi_hoc_id phải là số nguyên dương' });
-    }
-
-    if (!voSinhId) {
-      errors.push({ field: 'vo_sinh_id', reason: 'vo_sinh_id phải là số nguyên dương' });
-    }
-
-    errors.push.apply(errors, validateStatusPayload(payload));
-
-    if (errors.length) {
-      return res.status(400).json({ message: 'Dữ liệu không hợp lệ', errors });
-    }
-
-    const [buoiHoc, voSinh] = await Promise.all([
-      getBuoiHocById(buoiHocId),
-      supabase.from('vo_sinh').select('id').eq('id', voSinhId).maybeSingle()
-    ]);
+    const buoiHoc = await getBuoiHocById(buoiHocId);
 
     if (!buoiHoc) {
-      return res.status(404).json({ message: 'Không tìm thấy buổi học' });
+      return res.redirect(createRedirectWithMessage(redirectBase, '', 'Không tìm thấy buổi học'));
     }
 
-    if (voSinh.error) {
-      return res.status(500).json({ message: voSinh.error.message });
+    const [{ data: voSinh, error: voSinhError }, { data: relation, error: relationError }] = await Promise.all([
+      supabase.from('vo_sinh').select('id').eq('id', voSinhId).maybeSingle(),
+      supabase
+        .from('vo_sinh_lop')
+        .select('id')
+        .eq('vo_sinh_id', voSinhId)
+        .eq('lop_vo_id', buoiHoc.lop_vo_id)
+        .maybeSingle()
+    ]);
+
+    if (voSinhError || relationError) {
+      return res.redirect(createRedirectWithMessage(redirectBase, '', (voSinhError || relationError).message));
     }
 
-    if (!voSinh.data) {
-      return res.status(404).json({ message: 'Không tìm thấy võ sinh' });
+    if (!voSinh) {
+      return res.redirect(createRedirectWithMessage(redirectBase, '', 'Không tìm thấy võ sinh'));
+    }
+
+    if (!relation) {
+      return res.redirect(createRedirectWithMessage(redirectBase, '', 'Võ sinh không thuộc lớp của buổi học'));
     }
 
     const { data: existing, error: existingError } = await supabase
@@ -350,13 +298,13 @@ router.post('/upsert', async function(req, res) {
       .maybeSingle();
 
     if (existingError) {
-      return res.status(500).json({ message: existingError.message });
+      return res.redirect(createRedirectWithMessage(redirectBase, '', existingError.message));
     }
 
     const now = new Date().toISOString();
 
     if (existing) {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('diem_danh')
         .update({
           trang_thai_diem_danh: payload.trang_thai_diem_danh,
@@ -364,18 +312,16 @@ router.post('/upsert', async function(req, res) {
           ly_do: payload.ly_do,
           ngay_cap_nhat: now
         })
-        .eq('id', existing.id)
-        .select('*')
-        .single();
+        .eq('id', existing.id);
 
       if (error) {
-        return res.status(500).json({ message: error.message });
+        return res.redirect(createRedirectWithMessage(redirectBase, '', error.message));
       }
 
-      return res.json({ message: 'Cập nhật trạng thái điểm danh thành công', data });
+      return res.redirect(createRedirectWithMessage(redirectBase, 'Cập nhật trạng thái điểm danh thành công', ''));
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('diem_danh')
       .insert({
         buoi_hoc_id: buoiHocId,
@@ -384,17 +330,15 @@ router.post('/upsert', async function(req, res) {
         loai_vang: payload.trang_thai_diem_danh === TRANG_THAI.CO_MAT ? null : payload.loai_vang,
         ly_do: payload.ly_do,
         ngay_cap_nhat: now
-      })
-      .select('*')
-      .single();
+      });
 
     if (error) {
-      return res.status(500).json({ message: error.message });
+      return res.redirect(createRedirectWithMessage(redirectBase, '', error.message));
     }
 
-    return res.status(201).json({ message: 'Tạo điểm danh thành công', data });
+    return res.redirect(createRedirectWithMessage(redirectBase, 'Tạo điểm danh thành công', ''));
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.redirect(createRedirectWithMessage('/diem-danh', '', error.message));
   }
 });
 

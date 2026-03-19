@@ -27,8 +27,8 @@ app.use('/', indexRouter);
 app.use('/bac-dai', bacDaiRouter);
 app.use('/vo-sinh', voSinhRouter);
 app.use('/users', usersRouter);
-app.use('/api/buoi-hoc', buoiHocRouter);
-app.use('/api/diem-danh', diemDanhRouter);
+app.use('/buoi-hoc', buoiHocRouter);
+app.use('/diem-danh', diemDanhRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

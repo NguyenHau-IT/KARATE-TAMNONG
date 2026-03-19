@@ -58,7 +58,7 @@ router.get('/', async function(req, res, next) {
         totalBacDai: bacDaiCount || 0,
         totalVoSinh: voSinhCount || 0,
         latestUpdatedAt,
-        moduleCount: 2
+        moduleCount: 4
       },
       latestBacDai: latestBacDai || [],
       quickLinks: [
@@ -79,6 +79,18 @@ router.get('/', async function(req, res, next) {
           description: 'Quản lý hồ sơ võ sinh, liên hệ và bậc đai hiện tại.',
           href: '/vo-sinh',
           action: 'Mở danh sách'
+        },
+        {
+          title: 'Quản lý buổi học',
+          description: 'Tạo buổi học theo lớp võ và theo dõi lịch học.',
+          href: '/buoi-hoc',
+          action: 'Mở module'
+        },
+        {
+          title: 'Điểm danh buổi học',
+          description: 'Điểm danh trực tiếp theo từng võ sinh trong buổi học.',
+          href: '/diem-danh',
+          action: 'Bắt đầu điểm danh'
         }
       ]
     });
