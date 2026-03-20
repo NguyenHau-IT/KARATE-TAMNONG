@@ -17,6 +17,23 @@ Hệ thống quản lý võ sinh và điểm danh theo hướng Express + EJS + 
 3. Tạo file `.env` theo [.env.example](.env.example)
 4. Chạy dev: `npm run dev`
 
+## Quy trình phát triển kèm kiểm thử (bắt buộc)
+Mỗi tính năng mới phải đi theo chu kỳ sau:
+1. **Phân tích yêu cầu + tiêu chí Done**
+2. **Viết/điều chỉnh mã**
+3. **Kiểm thử ngay trong vòng phát triển**
+	- Test luồng chính (happy path)
+	- Test lỗi validate/nghiệp vụ
+	- Test hồi quy luồng cũ bị ảnh hưởng
+4. **Cập nhật tài liệu liên quan**
+5. **Chỉ chốt khi đã pass checklist test**
+
+Checklist nhanh trước commit:
+- [ ] Không lỗi runtime/lint ở phần đã sửa
+- [ ] Pass smoke test tính năng vừa làm
+- [ ] Luồng cũ quan trọng vẫn chạy
+- [ ] Tài liệu đã đồng bộ
+
 ## Tài liệu liên quan
 - [DB_CONVENTION.md](DB_CONVENTION.md)
 - [MA_TRAN_DB_API_MVP.md](MA_TRAN_DB_API_MVP.md)

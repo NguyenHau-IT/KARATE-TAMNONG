@@ -1,0 +1,203 @@
+<%- include('partials/header', { title, activePage: 'lop-vo' }) %>
+
+<div class="container">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+      <p class="text-uppercase text-secondary small fw-semibold mb-1">Karate Tamnong</p>
+      <h1 class="h2 mb-2">Quản lý lớp võ</h1>
+      <p class="text-secondary mb-0">Tạo lớp võ và quản lý danh sách võ sinh theo đúng cột dữ liệu Supabase hiện có.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/lop-vo">Làm mới</a>
+  </div>
+
+  <% if (message) { %>
+    <div class="alert alert-success"><%= message %></div>
+  <% } %>
+  <% if (errorMessage) { %>
+    <div class="alert alert-danger"><%= errorMessage %></div>
+  <% } %>
+
+  <div class="row g-4">
+    <div class="col-xl-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h5 mb-3">Tạo lớp võ</h2>
+          <form method="post" action="/lop-vo/tao" class="vstack gap-3">
+            <div>
+              <label class="form-label" for="ten_lop">Tên lớp</label>
+              <input id="ten_lop" name="ten_lop" class="form-control" required maxlength="100" />
+            </div>
+            <div>
+              <label class="form-label" for="lich_hoc">Lịch học</label>
+              <input id="lich_hoc" name="lich_hoc" class="form-control" maxlength="100" placeholder="Ví dụ: T3-T5 18:00" />
+            </div>
+            <div>
+              <label class="form-label" for="huan_luyen_vien">Huấn luyện viên</label>
+              <input id="huan_luyen_vien" name="huan_luyen_vien" class="form-control" maxlength="100" />
+            </div>
+            <button class="btn btn-primary" type="submit">Tạo lớp</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 mb-0">Danh sách lớp võ</h2>
+            <span class="badge text-bg-secondary"><%= lopVoList.length %> lớp</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>Tên lớp</th>
+                  <th>Lịch học</th>
+                  <th>Huấn luyện viên</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (!lopVoList.length) { %>
+                  <tr>
+                    <td colspan="5" class="text-center text-secondary py-4">Chưa có lớp võ nào.</td>
+                  </tr>
+                <% } %>
+                <% lopVoList.forEach(function(item) { %>
+                  <tr>
+                    <td><%= item.id %></td>
+                    <td class="fw-semibold"><%= item.ten_lop %></td>
+                    <td><%= item.lich_hoc || '---' %></td>
+                    <td><%= item.huan_luyen_vien || '---' %></td>
+                    <td>
+                      <div class="d-flex gap-2">
+                        <a class="btn btn-sm <%= selectedLopVoId === item.id ? 'btn-primary' : 'btn-outline-primary' %>" href="/lop-vo?lop_vo_id=<%= item.id %>">
+                          Quản lý võ sinh
+                        </a>
+                        <form method="post" action="/lop-vo/xoa/<%= item.id %>" onsubmit="return confirm('Xóa lớp võ này?');">
+                          <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if (selectedLopVo) { %>
+    <div class="row g-4 mt-1">
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Thêm võ sinh vào lớp: <%= selectedLopVo.ten_lop %></h2>
+            <form method="post" action="/lop-vo/them-vo-sinh" class="vstack gap-3">
+              <input type="hidden" name="lop_vo_id" value="<%= selectedLopVo.id %>" />
+
+              <div>
+                <label class="form-label" for="vo_sinh_id">Võ sinh</label>
+                <select class="form-select" id="vo_sinh_id" name="vo_sinh_id" required>
+                  <option value="">Chọn võ sinh</option>
+                  <% voSinhChuaVaoLop.forEach(function(item) { %>
+                    <option value="<%= item.id %>"><%= item.ho_ten %> (#<%= item.id %>)</option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <div>
+                <label class="form-label" for="ngay_vao_lop">Ngày vào lớp</label>
+                <input class="form-control" type="date" id="ngay_vao_lop" name="ngay_vao_lop" />
+              </div>
+
+              <div>
+                <label class="form-label" for="trang_thai">Trạng thái</label>
+                <select class="form-select" id="trang_thai" name="trang_thai">
+                  <option value="dang_hoc">Đang học</option>
+                  <option value="bao_luu">Bảo lưu</option>
+                  <option value="nghi">Nghỉ</option>
+                </select>
+              </div>
+
+              <button class="btn btn-primary" type="submit">Thêm vào lớp</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h2 class="h5 mb-0">Danh sách thành viên lớp</h2>
+              <span class="badge text-bg-secondary"><%= thanhVienList.length %> võ sinh</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Võ sinh</th>
+                    <th>Liên hệ</th>
+                    <th>Cập nhật trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (!thanhVienList.length) { %>
+                    <tr>
+                      <td colspan="3" class="text-center text-secondary py-4">Chưa có võ sinh trong lớp này.</td>
+                    </tr>
+                  <% } %>
+                  <% thanhVienList.forEach(function(item) { %>
+                    <tr>
+                      <td>
+                        <div class="fw-semibold"><%= item.vo_sinh ? item.vo_sinh.ho_ten : ('#' + item.vo_sinh_id) %></div>
+                        <div class="small text-secondary">ID võ sinh: <%= item.vo_sinh_id %></div>
+                      </td>
+                      <td><%= item.vo_sinh && item.vo_sinh.so_dien_thoai ? item.vo_sinh.so_dien_thoai : '---' %></td>
+                      <td>
+                        <form method="post" action="/lop-vo/cap-nhat-thanh-vien/<%= item.id %>" class="row g-2">
+                          <input type="hidden" name="lop_vo_id" value="<%= selectedLopVo.id %>" />
+                          <div class="col-md-4">
+                            <input class="form-control form-control-sm" type="date" name="ngay_vao_lop" value="<%= item.ngay_vao_lop || '' %>" />
+                          </div>
+                          <div class="col-md-4">
+                            <select class="form-select form-select-sm" name="trang_thai">
+                              <option value="dang_hoc" <%= item.trang_thai === 'dang_hoc' ? 'selected' : '' %>>Đang học</option>
+                              <option value="bao_luu" <%= item.trang_thai === 'bao_luu' ? 'selected' : '' %>>Bảo lưu</option>
+                              <option value="nghi" <%= item.trang_thai === 'nghi' ? 'selected' : '' %>>Nghỉ</option>
+                            </select>
+                          </div>
+                          <div class="col-md-4 d-flex gap-2">
+                            <button class="btn btn-sm btn-primary" type="submit">Lưu</button>
+                            <button
+                              class="btn btn-sm btn-outline-danger"
+                              type="submit"
+                              formaction="/lop-vo/xoa-thanh-vien/<%= item.id %>"
+                              formmethod="post"
+                              onclick="return confirm('Xóa võ sinh khỏi lớp này?');"
+                            >
+                              Xóa
+                            </button>
+                          </div>
+                        </form>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

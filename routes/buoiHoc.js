@@ -30,7 +30,11 @@ function createRedirectWithMessage(path, message, error) {
   }
 
   const query = searchParams.toString();
-  return query ? `${path}?${query}` : path;
+  if (!query) {
+    return path;
+  }
+
+  return path.includes('?') ? `${path}&${query}` : `${path}?${query}`;
 }
 
 function isValidDateString(value) {

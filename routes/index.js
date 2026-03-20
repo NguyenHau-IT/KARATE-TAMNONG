@@ -58,7 +58,7 @@ router.get('/', async function(req, res, next) {
         totalBacDai: bacDaiCount || 0,
         totalVoSinh: voSinhCount || 0,
         latestUpdatedAt,
-        moduleCount: 4
+        moduleCount: 5
       },
       latestBacDai: latestBacDai || [],
       quickLinks: [
@@ -79,6 +79,12 @@ router.get('/', async function(req, res, next) {
           description: 'Quản lý hồ sơ võ sinh, liên hệ và bậc đai hiện tại.',
           href: '/vo-sinh',
           action: 'Mở danh sách'
+        },
+        {
+          title: 'Quản lý lớp võ',
+          description: 'Tạo lớp, cập nhật lịch học và gán võ sinh vào lớp.',
+          href: '/lop-vo',
+          action: 'Mở module'
         },
         {
           title: 'Quản lý buổi học',

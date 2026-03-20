@@ -33,6 +33,11 @@ function normalizeNullableText(value) {
   return normalized || null;
 }
 
+function normalizeFilterValue(value) {
+  const normalized = normalizeText(value);
+  return normalized || null;
+}
+
 function createRedirectWithMessage(path, message, error) {
   const searchParams = new URLSearchParams();
 
@@ -45,7 +50,11 @@ function createRedirectWithMessage(path, message, error) {
   }
 
   const query = searchParams.toString();
-  return query ? `${path}?${query}` : path;
+  if (!query) {
+    return path;
+  }
+
+  return path.includes('?') ? `${path}&${query}` : `${path}?${query}`;
 }
 
 function validateStatusPayload(payload) {
@@ -195,9 +204,65 @@ function buildSummary(danhSach) {
   return summary;
 }
 
+function applyDanhSachFilters(danhSach, filters) {
+  return danhSach.filter(function(item) {
+    if (filters.q) {
+      const keyword = filters.q.toLowerCase();
+      const hoTen = (item.ho_ten || '').toLowerCase();
+      const voSinhId = String(item.vo_sinh_id || '');
+
+      if (!hoTen.includes(keyword) && !voSinhId.includes(keyword)) {
+        return false;
+      }
+    }
+
+    if (filters.trangThai) {
+      if (filters.trangThai === 'chua_cap_nhat') {
+        if (item.trang_thai_diem_danh) {
+          return false;
+        }
+      } else if (item.trang_thai_diem_danh !== filters.trangThai) {
+        return false;
+      }
+    }
+
+    if (filters.loaiVang) {
+      if (item.loai_vang !== filters.loaiVang) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+function buildRedirectBaseForDiemDanh(buoiHocId, filters) {
+  const searchParams = new URLSearchParams();
+  searchParams.set('buoi_hoc_id', String(buoiHocId));
+
+  if (filters.q) {
+    searchParams.set('q', filters.q);
+  }
+
+  if (filters.trangThai) {
+    searchParams.set('trang_thai', filters.trangThai);
+  }
+
+  if (filters.loaiVang) {
+    searchParams.set('loai_vang', filters.loaiVang);
+  }
+
+  return `/diem-danh?${searchParams.toString()}`;
+}
+
 router.get('/', async function(req, res, next) {
   try {
     const selectedBuoiHocId = parsePositiveInt(req.query.buoi_hoc_id);
+    const filters = {
+      q: normalizeFilterValue(req.query.q),
+      trangThai: normalizeFilterValue(req.query.trang_thai),
+      loaiVang: normalizeFilterValue(req.query.loai_vang)
+    };
     const buoiHocList = await loadBuoiHocList();
 
     let buoiHoc = null;
@@ -218,8 +283,9 @@ router.get('/', async function(req, res, next) {
       if (!buoiHoc) {
         errorMessage = errorMessage || 'Không tìm thấy buổi học';
       } else {
-        danhSachDiemDanh = await loadDanhSachDiemDanh(buoiHoc);
-        summary = buildSummary(danhSachDiemDanh);
+        const rawDanhSachDiemDanh = await loadDanhSachDiemDanh(buoiHoc);
+        summary = buildSummary(rawDanhSachDiemDanh);
+        danhSachDiemDanh = applyDanhSachFilters(rawDanhSachDiemDanh, filters);
       }
     }
 
@@ -231,6 +297,7 @@ router.get('/', async function(req, res, next) {
       buoiHoc,
       danhSachDiemDanh,
       summary,
+      filters,
       message: req.query.message || '',
       errorMessage
     });
@@ -243,12 +310,17 @@ router.post('/cap-nhat', async function(req, res) {
   try {
     const buoiHocId = parsePositiveInt(req.body.buoi_hoc_id);
     const voSinhId = parsePositiveInt(req.body.vo_sinh_id);
+    const filters = {
+      q: normalizeFilterValue(req.body.q),
+      trangThai: normalizeFilterValue(req.body.trang_thai),
+      loaiVang: normalizeFilterValue(req.body.loai_vang_filter)
+    };
 
     if (!buoiHocId || !voSinhId) {
       return res.redirect(createRedirectWithMessage('/diem-danh', '', 'Thiếu thông tin buổi học hoặc võ sinh'));
     }
 
-    const redirectBase = `/diem-danh?buoi_hoc_id=${buoiHocId}`;
+    const redirectBase = buildRedirectBaseForDiemDanh(buoiHocId, filters);
 
     const payload = {
       trang_thai_diem_danh: normalizeText(req.body.trang_thai_diem_danh),

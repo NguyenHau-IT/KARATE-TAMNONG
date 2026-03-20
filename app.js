@@ -10,6 +10,7 @@ var voSinhRouter = require('./routes/voSinh');
 var usersRouter = require('./routes/users');
 var buoiHocRouter = require('./routes/buoiHoc');
 var diemDanhRouter = require('./routes/diemDanh');
+var lopVoRouter = require('./routes/lopVo');
 
 var app = express();
 
@@ -27,6 +28,7 @@ app.use('/', indexRouter);
 app.use('/bac-dai', bacDaiRouter);
 app.use('/vo-sinh', voSinhRouter);
 app.use('/users', usersRouter);
+app.use('/lop-vo', lopVoRouter);
 app.use('/buoi-hoc', buoiHocRouter);
 app.use('/diem-danh', diemDanhRouter);
 

@@ -40,6 +40,46 @@
   </div>
 
   <% if (selectedBuoiHocId && buoiHoc) { %>
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <form method="get" action="/diem-danh" class="row g-3 align-items-end">
+          <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId %>" />
+          <div class="col-lg-5">
+            <label class="form-label" for="q">Tìm theo tên / ID võ sinh</label>
+            <input
+              class="form-control"
+              type="text"
+              id="q"
+              name="q"
+              value="<%= filters && filters.q ? filters.q : '' %>"
+              placeholder="Ví dụ: Nguyễn Văn A hoặc 12"
+            />
+          </div>
+          <div class="col-lg-3">
+            <label class="form-label" for="trang_thai">Trạng thái</label>
+            <select class="form-select" id="trang_thai" name="trang_thai">
+              <option value="">Tất cả</option>
+              <option value="co_mat" <%= filters && filters.trangThai === 'co_mat' ? 'selected' : '' %>>Có mặt</option>
+              <option value="vang" <%= filters && filters.trangThai === 'vang' ? 'selected' : '' %>>Vắng</option>
+              <option value="chua_cap_nhat" <%= filters && filters.trangThai === 'chua_cap_nhat' ? 'selected' : '' %>>Chưa cập nhật</option>
+            </select>
+          </div>
+          <div class="col-lg-2">
+            <label class="form-label" for="loai_vang">Loại vắng</label>
+            <select class="form-select" id="loai_vang" name="loai_vang">
+              <option value="">Tất cả</option>
+              <option value="co_phep" <%= filters && filters.loaiVang === 'co_phep' ? 'selected' : '' %>>Có phép</option>
+              <option value="khong_phep" <%= filters && filters.loaiVang === 'khong_phep' ? 'selected' : '' %>>Không phép</option>
+            </select>
+          </div>
+          <div class="col-lg-2 d-grid gap-2">
+            <button class="btn btn-primary" type="submit">Lọc</button>
+            <a class="btn btn-outline-secondary" href="/diem-danh?buoi_hoc_id=<%= selectedBuoiHocId %>">Xóa lọc</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div class="row g-3 mb-4">
       <div class="col-md-2">
         <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Tổng</div><div class="h4 mb-0"><%= summary.tong_vo_sinh %></div></div></div>
@@ -98,6 +138,9 @@
                     <form method="post" action="/diem-danh/cap-nhat" class="row g-2">
                       <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId %>" />
                       <input type="hidden" name="vo_sinh_id" value="<%= item.vo_sinh_id %>" />
+                      <input type="hidden" name="q" value="<%= filters && filters.q ? filters.q : '' %>" />
+                      <input type="hidden" name="trang_thai" value="<%= filters && filters.trangThai ? filters.trangThai : '' %>" />
+                      <input type="hidden" name="loai_vang_filter" value="<%= filters && filters.loaiVang ? filters.loaiVang : '' %>" />
 
                       <div class="col-md-4">
                         <select class="form-select form-select-sm" name="trang_thai_diem_danh" required>
