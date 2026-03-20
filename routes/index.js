@@ -58,7 +58,7 @@ router.get('/', async function(req, res, next) {
         totalBacDai: bacDaiCount || 0,
         totalVoSinh: voSinhCount || 0,
         latestUpdatedAt,
-        moduleCount: 5
+        moduleCount: 6
       },
       latestBacDai: latestBacDai || [],
       quickLinks: [
@@ -97,6 +97,12 @@ router.get('/', async function(req, res, next) {
           description: 'Điểm danh trực tiếp theo từng võ sinh trong buổi học.',
           href: '/diem-danh',
           action: 'Bắt đầu điểm danh'
+        },
+        {
+          title: 'Tab vắng mặt',
+          description: 'Theo dõi danh sách vắng có phép và không phép theo buổi học.',
+          href: '/vang-mat',
+          action: 'Mở tab'
         }
       ]
     });

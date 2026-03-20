@@ -8,8 +8,10 @@ Hệ thống quản lý võ sinh và điểm danh theo hướng Express + EJS + 
 	- `/` Dashboard
 	- `/bac-dai` Quản lý bậc đai
 	- `/vo-sinh` Quản lý võ sinh
+	- `/lop-vo` Quản lý lớp võ + gán võ sinh vào lớp
 	- `/buoi-hoc` Quản lý buổi học (tạo/xóa)
 	- `/diem-danh` Điểm danh theo buổi học
+	- `/vang-mat` Tab vắng mặt theo buổi học
 
 ## Chạy dự án
 1. Cài Node.js LTS
@@ -39,5 +41,6 @@ Checklist nhanh trước commit:
 - [MA_TRAN_DB_API_MVP.md](MA_TRAN_DB_API_MVP.md)
 - [MODULE_BUOI_HOC.md](MODULE_BUOI_HOC.md)
 - [MODULE_DIEM_DANH.md](MODULE_DIEM_DANH.md)
+- [QUY_TRINH_DEV_TEST.md](QUY_TRINH_DEV_TEST.md)
 - [RESPONSE_MAU_JSON.md](RESPONSE_MAU_JSON.md)
 - [TEST_API_KICH_BAN.md](TEST_API_KICH_BAN.md)
