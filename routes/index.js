@@ -58,7 +58,7 @@ router.get('/', async function(req, res, next) {
         totalBacDai: bacDaiCount || 0,
         totalVoSinh: voSinhCount || 0,
         latestUpdatedAt,
-        moduleCount: 6
+        moduleCount: 7
       },
       latestBacDai: latestBacDai || [],
       quickLinks: [
@@ -103,6 +103,12 @@ router.get('/', async function(req, res, next) {
           description: 'Theo dõi danh sách vắng có phép và không phép theo buổi học.',
           href: '/vang-mat',
           action: 'Mở tab'
+        },
+        {
+          title: 'Check-in PIN',
+          description: 'Võ sinh nhập mã PIN để tự điểm danh có mặt.',
+          href: '/check-in-pin',
+          action: 'Mở màn hình'
         }
       ]
     });

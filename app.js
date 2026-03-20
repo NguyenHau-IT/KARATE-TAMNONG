@@ -12,6 +12,7 @@ var buoiHocRouter = require('./routes/buoiHoc');
 var diemDanhRouter = require('./routes/diemDanh');
 var lopVoRouter = require('./routes/lopVo');
 var vangMatRouter = require('./routes/vangMat');
+var checkInPinRouter = require('./routes/checkInPin');
 
 var app = express();
 
@@ -33,6 +34,7 @@ app.use('/lop-vo', lopVoRouter);
 app.use('/buoi-hoc', buoiHocRouter);
 app.use('/diem-danh', diemDanhRouter);
 app.use('/vang-mat', vangMatRouter);
+app.use('/check-in-pin', checkInPinRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

@@ -1,6 +1,7 @@
 const express = require('express');
 
 const supabase = require('../config/supabase');
+const attendancePinStore = require('../utils/attendancePinStore');
 
 const router = express.Router();
 
@@ -121,12 +122,18 @@ async function loadBuoiHocList() {
 router.get('/', async function(req, res, next) {
   try {
     const [lopVoList, buoiHocList] = await Promise.all([loadLopVoList(), loadBuoiHocList()]);
+    const activePinMap = attendancePinStore.getActivePinMap(
+      buoiHocList.map(function(item) {
+        return item.id;
+      })
+    );
 
     return res.render('buoi-hoc', {
       title: 'Quản lý buổi học',
       activePage: 'buoi-hoc',
       lopVoList,
       buoiHocList,
+      activePinMap,
       message: req.query.message || '',
       errorMessage: req.query.error || ''
     });
@@ -224,6 +231,39 @@ router.post('/xoa/:id', async function(req, res) {
     }
 
     return res.redirect(createRedirectWithMessage('/buoi-hoc', 'Xóa buổi học thành công', ''));
+  } catch (error) {
+    return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
+  }
+});
+
+router.post('/tao-pin/:id', async function(req, res) {
+  try {
+    const buoiHocId = parsePositiveInt(req.params.id);
+    const safeTtlMinutes = 1;
+
+    if (!buoiHocId) {
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', 'ID buổi học không hợp lệ'));
+    }
+
+    const { data: buoiHoc, error } = await supabase.from('buoi_hoc').select('id').eq('id', buoiHocId).maybeSingle();
+
+    if (error) {
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
+    }
+
+    if (!buoiHoc) {
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', 'Không tìm thấy buổi học'));
+    }
+
+    const pinData = attendancePinStore.generatePin(buoiHocId, safeTtlMinutes);
+
+    return res.redirect(
+      createRedirectWithMessage(
+        '/buoi-hoc',
+        `Đã tạo PIN ${pinData.pin} cho buổi #${buoiHocId} (hết hạn lúc ${new Date(pinData.expiresAt).toLocaleTimeString('vi-VN')})`,
+        ''
+      )
+    );
   } catch (error) {
     return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
   }
