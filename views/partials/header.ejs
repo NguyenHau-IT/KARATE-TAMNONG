@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title || 'Karate Tamnong' %></title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="/stylesheets/style.css" />
+  </head>
+  <body class="bg-body-tertiary">
+    <nav class="navbar navbar-expand-lg bg-white border-bottom shadow-sm">
+      <div class="container">
+        <a class="navbar-brand fw-semibold" href="/">Karate Tamnong</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#mainNavbar"
+          aria-controls="mainNavbar"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNavbar">
+          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+              <a class="nav-link <%= activePage === 'dashboard' ? 'active fw-semibold' : '' %>" href="/">
+                Bảng điều khiển
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link <%= activePage === 'bac-dai' ? 'active fw-semibold' : '' %>" href="/bac-dai">
+                Quản lý bậc đai
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link <%= activePage === 'vo-sinh' ? 'active fw-semibold' : '' %>" href="/vo-sinh">
+                Quản lý võ sinh
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link <%= activePage === 'lop-vo' ? 'active fw-semibold' : '' %>" href="/lop-vo">
+                Lớp võ
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link <%= activePage === 'buoi-hoc' ? 'active fw-semibold' : '' %>" href="/buoi-hoc">
+                Buổi học
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link <%= activePage === 'diem-danh' ? 'active fw-semibold' : '' %>" href="/diem-danh">
+                Điểm danh
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link <%= activePage === 'vang-mat' ? 'active fw-semibold' : '' %>" href="/vang-mat">
+                Vắng mặt
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <main class="py-4">

@@ -1,0 +1,128 @@
+<%- include('partials/header', { title, activePage: 'bac-dai' }) %>
+
+<div class="container">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+      <p class="text-uppercase text-secondary small fw-semibold mb-1">Karate Tamnong</p>
+      <h1 class="h2 mb-2">Quản lý bậc đai</h1>
+      <p class="text-secondary mb-0">Theo dõi danh sách bậc đai và cập nhật dữ liệu trực tiếp từ Supabase.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/bac-dai">Làm mới danh sách</a>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 id="bacDaiFormTitle" class="h5 mb-0">Thêm bậc đai mới</h2>
+            <button id="cancelEditButton" class="btn btn-sm btn-outline-secondary d-none" type="button">
+              Tạo mới
+            </button>
+          </div>
+
+          <form id="bacDaiForm">
+            <input id="editing_id" type="hidden" value="" />
+            <div class="mb-3">
+              <label for="ten_bac_dai" class="form-label">Tên bậc đai</label>
+              <input
+                id="ten_bac_dai"
+                name="ten_bac_dai"
+                type="text"
+                maxlength="50"
+                required
+                class="form-control"
+                value=""
+                placeholder="Ví dụ: Đai trắng"
+              />
+            </div>
+
+            <div class="mb-3">
+              <label for="mo_ta" class="form-label">Mô tả</label>
+              <textarea
+                id="mo_ta"
+                name="mo_ta"
+                rows="4"
+                maxlength="255"
+                class="form-control"
+                placeholder="Mô tả ngắn cho bậc đai này"
+              ></textarea>
+            </div>
+
+            <button id="submitButton" class="btn btn-primary w-100" type="submit">Thêm bậc đai</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+            <h2 class="h5 mb-0">Danh sách bậc đai</h2>
+            <span id="bacDaiCounter" class="badge text-bg-secondary align-self-start align-self-md-auto">
+              <%= bacDaiList.length %> mục
+            </span>
+          </div>
+
+          <div id="emptyState" class="alert alert-light border mb-3 <%= bacDaiList.length ? 'd-none' : '' %>">
+            Chưa có dữ liệu trong bảng <code>bac_dai</code>.
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>Tên bậc đai</th>
+                  <th>Mô tả</th>
+                  <th>Ngày tạo</th>
+                  <th>Cập nhật</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="bacDaiTableBody">
+                <% bacDaiList.forEach(function(item) { %>
+                  <tr data-id="<%= item.id %>">
+                    <td><%= item.id %></td>
+                    <td class="fw-semibold"><%= item.ten_bac_dai %></td>
+                    <td><%= item.mo_ta || 'Chưa có mô tả' %></td>
+                    <td><%= item.ngay_tao ? new Date(item.ngay_tao).toLocaleString('vi-VN') : '' %></td>
+                    <td><%= item.ngay_cap_nhat ? new Date(item.ngay_cap_nhat).toLocaleString('vi-VN') : '' %></td>
+                    <td>
+                      <div class="d-flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-primary"
+                          data-action="edit"
+                          data-id="<%= item.id %>"
+                        >
+                          Sửa
+                        </button>
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-danger"
+                          data-action="delete"
+                          data-id="<%= item.id %>"
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.__BAC_DAI_DATA__ = <%- JSON.stringify(bacDaiList) %>;
+  window.__BAC_DAI_FLASH__ = <%- JSON.stringify({ message, errorMessage }) %>;
+</script>
+<script src="/javascripts/bac-dai.js"></script>
+<%- include('partials/footer') %>
