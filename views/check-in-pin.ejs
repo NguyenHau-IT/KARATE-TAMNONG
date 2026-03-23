@@ -60,12 +60,22 @@
 
               <div>
                 <label class="form-label" for="vo_sinh_id">Võ sinh</label>
-                <select class="form-select" id="vo_sinh_id" name="vo_sinh_id" required>
-                  <option value="">Chọn võ sinh</option>
-                  <% voSinhOptions.forEach(function(item) { %>
-                    <option value="<%= item.vo_sinh_id %>"><%= item.ho_ten || ('Võ sinh #' + item.vo_sinh_id) %> (#<%= item.vo_sinh_id %>)</option>
-                  <% }) %>
-                </select>
+                <% if (forceVoSinhId) { %>
+                  <% const selfOption = voSinhOptions && voSinhOptions.length ? voSinhOptions[0] : null; %>
+                  <input type="hidden" name="vo_sinh_id" value="<%= forceVoSinhId %>" />
+                  <input
+                    class="form-control"
+                    value="<%= selfOption ? (selfOption.ho_ten || ('Võ sinh #' + selfOption.vo_sinh_id)) : ('Võ sinh #' + forceVoSinhId) %>"
+                    disabled
+                  />
+                <% } else { %>
+                  <select class="form-select" id="vo_sinh_id" name="vo_sinh_id" required>
+                    <option value="">Chọn võ sinh</option>
+                    <% voSinhOptions.forEach(function(item) { %>
+                      <option value="<%= item.vo_sinh_id %>"><%= item.ho_ten || ('Võ sinh #' + item.vo_sinh_id) %> (#<%= item.vo_sinh_id %>)</option>
+                    <% }) %>
+                  </select>
+                <% } %>
               </div>
 
               <div>

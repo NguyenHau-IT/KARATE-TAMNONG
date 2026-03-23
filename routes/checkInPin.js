@@ -91,7 +91,16 @@ router.get('/', async function(req, res, next) {
       if (!selectedBuoiHoc) {
         errorMessage = errorMessage || 'Không tìm thấy buổi học';
       } else {
-        voSinhOptions = await loadVoSinhOptionsByBuoiHoc(selectedBuoiHoc);
+        const rawVoSinhOptions = await loadVoSinhOptionsByBuoiHoc(selectedBuoiHoc);
+
+        if (req.currentUser && req.currentUser.role === 'vo_sinh') {
+          voSinhOptions = rawVoSinhOptions.filter(function(item) {
+            return item.vo_sinh_id === req.currentUser.linkedVoSinhId;
+          });
+        } else {
+          voSinhOptions = rawVoSinhOptions;
+        }
+
         activePin = attendancePinStore.getActivePin(selectedBuoiHocId);
       }
     }
@@ -104,6 +113,7 @@ router.get('/', async function(req, res, next) {
       selectedBuoiHoc,
       voSinhOptions,
       activePin,
+      forceVoSinhId: req.currentUser && req.currentUser.role === 'vo_sinh' ? req.currentUser.linkedVoSinhId : null,
       message: req.query.message || '',
       errorMessage
     });
@@ -115,7 +125,11 @@ router.get('/', async function(req, res, next) {
 router.post('/', async function(req, res) {
   try {
     const buoiHocId = parsePositiveInt(req.body.buoi_hoc_id);
-    const voSinhId = parsePositiveInt(req.body.vo_sinh_id);
+    const requestedVoSinhId = parsePositiveInt(req.body.vo_sinh_id);
+    const voSinhId =
+      req.currentUser && req.currentUser.role === 'vo_sinh'
+        ? req.currentUser.linkedVoSinhId
+        : requestedVoSinhId;
     const pin = normalizeText(req.body.pin_code);
 
     if (!buoiHocId || !voSinhId || !pin) {

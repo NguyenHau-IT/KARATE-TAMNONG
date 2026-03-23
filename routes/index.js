@@ -1,9 +1,10 @@
 var express = require('express');
 var supabase = require('../config/supabase');
+var { requireRoles } = require('../middlewares/auth');
 
 var router = express.Router();
 
-router.get('/', async function(req, res, next) {
+router.get('/', requireRoles(['admin', 'huan_luyen_vien']), async function(req, res, next) {
   try {
     const [
       { count: bacDaiCount, error: countError },

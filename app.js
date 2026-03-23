@@ -3,8 +3,10 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+var { attachCurrentUser, requireRoles } = require('./middlewares/auth');
 
 var indexRouter = require('./routes/index');
+var authRouter = require('./routes/auth');
 var bacDaiRouter = require('./routes/bacDai');
 var voSinhRouter = require('./routes/voSinh');
 var usersRouter = require('./routes/users');
@@ -25,16 +27,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(attachCurrentUser);
 
+app.use('/auth', authRouter);
 app.use('/', indexRouter);
-app.use('/bac-dai', bacDaiRouter);
-app.use('/vo-sinh', voSinhRouter);
-app.use('/users', usersRouter);
-app.use('/lop-vo', lopVoRouter);
-app.use('/buoi-hoc', buoiHocRouter);
-app.use('/diem-danh', diemDanhRouter);
-app.use('/vang-mat', vangMatRouter);
-app.use('/check-in-pin', checkInPinRouter);
+app.use('/bac-dai', requireRoles(['admin', 'huan_luyen_vien']), bacDaiRouter);
+app.use('/vo-sinh', requireRoles(['admin', 'huan_luyen_vien']), voSinhRouter);
+app.use('/users', requireRoles(['admin']), usersRouter);
+app.use('/lop-vo', requireRoles(['admin', 'huan_luyen_vien']), lopVoRouter);
+app.use('/buoi-hoc', requireRoles(['admin', 'huan_luyen_vien']), buoiHocRouter);
+app.use('/diem-danh', requireRoles(['admin', 'huan_luyen_vien']), diemDanhRouter);
+app.use('/vang-mat', requireRoles(['admin', 'huan_luyen_vien']), vangMatRouter);
+app.use('/check-in-pin', requireRoles(['admin', 'huan_luyen_vien', 'vo_sinh']), checkInPinRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
