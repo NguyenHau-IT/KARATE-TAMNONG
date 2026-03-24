@@ -18,6 +18,7 @@ Hệ thống quản lý võ sinh và điểm danh theo hướng Express + EJS + 
 - Auth dùng JWT access token + refresh token cookie rotation, nguồn sự thật của user/role nằm trong DB.
 - Cần chạy script: [sql/001_tai_khoan_auth.sql](sql/001_tai_khoan_auth.sql)
 - Cần chạy thêm script: [sql/002_auth_session_refresh.sql](sql/002_auth_session_refresh.sql)
+- Cần chạy thêm script: [sql/003_auth_audit_log.sql](sql/003_auth_audit_log.sql)
 
 Seed mặc định sau khi chạy SQL:
 - `admin / admin123` → `admin`
@@ -31,6 +32,7 @@ Biến môi trường liên quan:
 - `AUTH_REFRESH_COOKIE_NAME`
 - `AUTH_ACCESS_TOKEN_MINUTES`
 - `AUTH_REFRESH_TOKEN_DAYS`
+- `AUTH_MAX_ACTIVE_SESSIONS`
 - `AUTH_JWT_ACTIVE_KID` (optional)
 - `AUTH_JWT_SECRETS_JSON` (optional, dùng cho rotate secret)
 
@@ -38,13 +40,17 @@ Biến môi trường liên quan:
 1. Mở Supabase SQL Editor.
 2. Chạy file [sql/001_tai_khoan_auth.sql](sql/001_tai_khoan_auth.sql).
 3. Chạy tiếp file [sql/002_auth_session_refresh.sql](sql/002_auth_session_refresh.sql).
-4. Khởi động lại server.
-5. Đăng nhập bằng tài khoản seed ở trên và đổi mật khẩu ngay sau khi vào hệ thống.
+4. Chạy tiếp file [sql/003_auth_audit_log.sql](sql/003_auth_audit_log.sql).
+5. Khởi động lại server.
+6. Đăng nhập bằng tài khoản seed ở trên và đổi mật khẩu ngay sau khi vào hệ thống.
 
 ### Flow token hiện tại
 - Login: tạo access token (ngắn hạn) + refresh token (dài hạn).
 - Mỗi lần refresh: tạo refresh token mới và revoke token cũ (rotation).
 - Nếu refresh token bị dùng lại sau khi đã rotate: toàn bộ session của tài khoản sẽ bị revoke.
+- Có màn hình quản trị phiên tại `/auth/sessions` để xem thiết bị đang đăng nhập và thu hồi từng phiên.
+- Hệ thống giới hạn số phiên hoạt động tối đa mỗi tài khoản theo `AUTH_MAX_ACTIVE_SESSIONS`.
+- Ghi security audit log cho login/refresh/logout/revoke.
 - Chi tiết cơ chế bảo mật token: [AUTH_TOKEN_SECURITY.md](AUTH_TOKEN_SECURITY.md)
 
 ## Chạy dự án

@@ -18,9 +18,13 @@ function mapSession(row) {
     id: row.id,
     accountId: row.tai_khoan_id,
     refreshTokenHash: row.refresh_token_hash,
+    userAgent: row.user_agent || null,
+    ipAddress: row.ip_address || null,
     expiresAt: row.expires_at,
     revokedAt: row.revoked_at,
-    replacedBySessionId: row.replaced_by_session_id || null
+    replacedBySessionId: row.replaced_by_session_id || null,
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null
   };
 }
 
@@ -46,7 +50,7 @@ async function createSession(payload) {
       user_agent: normalizeText(payload.userAgent) || null,
       ip_address: normalizeText(payload.ipAddress) || null
     })
-    .select('id, tai_khoan_id, refresh_token_hash, expires_at, revoked_at, replaced_by_session_id')
+    .select('id, tai_khoan_id, refresh_token_hash, user_agent, ip_address, expires_at, revoked_at, replaced_by_session_id, created_at, updated_at')
     .single();
 
   if (error) {
@@ -59,7 +63,7 @@ async function createSession(payload) {
 async function findSessionByRefreshHash(refreshTokenHash) {
   const { data, error } = await supabase
     .from('auth_session')
-    .select('id, tai_khoan_id, refresh_token_hash, expires_at, revoked_at, replaced_by_session_id')
+    .select('id, tai_khoan_id, refresh_token_hash, user_agent, ip_address, expires_at, revoked_at, replaced_by_session_id, created_at, updated_at')
     .eq('refresh_token_hash', refreshTokenHash)
     .maybeSingle();
 
@@ -82,6 +86,32 @@ async function revokeSessionById(sessionId) {
       updated_at: new Date().toISOString()
     })
     .eq('id', sessionId);
+}
+
+async function revokeSessionByIdForAccount(sessionId, accountId) {
+  if (!sessionId || !accountId) {
+    return { revoked: false, error: null };
+  }
+
+  const { data, error } = await supabase
+    .from('auth_session')
+    .update({
+      revoked_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .select('id')
+    .eq('id', sessionId)
+    .eq('tai_khoan_id', accountId)
+    .is('revoked_at', null);
+
+  if (error) {
+    return { revoked: false, error };
+  }
+
+  return {
+    revoked: Array.isArray(data) && data.length > 0,
+    error: null
+  };
 }
 
 async function revokeAllSessionsByAccountId(accountId) {
@@ -124,6 +154,69 @@ async function rotateSession(oldSession, newSessionPayload) {
   return created;
 }
 
+async function listActiveSessionsByAccountId(accountId) {
+  if (!accountId) {
+    return { sessions: [], error: null };
+  }
+
+  const nowIso = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('auth_session')
+    .select('id, tai_khoan_id, refresh_token_hash, user_agent, ip_address, expires_at, revoked_at, replaced_by_session_id, created_at, updated_at')
+    .eq('tai_khoan_id', accountId)
+    .is('revoked_at', null)
+    .gt('expires_at', nowIso)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    return { sessions: [], error };
+  }
+
+  return {
+    sessions: (data || []).map(mapSession),
+    error: null
+  };
+}
+
+async function enforceMaxActiveSessions(accountId, maxActiveSessions) {
+  if (!accountId || !maxActiveSessions || maxActiveSessions <= 0) {
+    return;
+  }
+
+  const nowIso = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('auth_session')
+    .select('id')
+    .eq('tai_khoan_id', accountId)
+    .is('revoked_at', null)
+    .gt('expires_at', nowIso)
+    .order('created_at', { ascending: false });
+
+  if (error || !data || data.length <= maxActiveSessions) {
+    return;
+  }
+
+  const toRevoke = data.slice(maxActiveSessions).map(function(item) {
+    return item.id;
+  });
+
+  if (!toRevoke.length) {
+    return;
+  }
+
+  await supabase
+    .from('auth_session')
+    .update({
+      revoked_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('tai_khoan_id', accountId)
+    .in('id', toRevoke)
+    .is('revoked_at', null);
+}
+
 module.exports = {
   getIsoAfterDays,
   isExpired,
@@ -131,6 +224,9 @@ module.exports = {
   createSession,
   findSessionByRefreshHash,
   revokeSessionById,
+  revokeSessionByIdForAccount,
   revokeAllSessionsByAccountId,
-  rotateSession
+  rotateSession,
+  listActiveSessionsByAccountId,
+  enforceMaxActiveSessions
 };

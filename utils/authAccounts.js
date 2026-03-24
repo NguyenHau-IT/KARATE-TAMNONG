@@ -60,6 +60,7 @@ function getAuthConfig() {
 
   const accessTokenMinutes = parsePositiveInt(process.env.AUTH_ACCESS_TOKEN_MINUTES, 15);
   const refreshTokenDays = parsePositiveInt(process.env.AUTH_REFRESH_TOKEN_DAYS, 7);
+  const maxActiveSessions = parsePositiveInt(process.env.AUTH_MAX_ACTIVE_SESSIONS, 5);
 
   return {
     jwtSecretsByKid,
@@ -70,7 +71,8 @@ function getAuthConfig() {
     refreshTokenDays,
     accessTokenExpiresIn: `${accessTokenMinutes}m`,
     accessCookieMaxAgeMs: accessTokenMinutes * 60 * 1000,
-    refreshCookieMaxAgeMs: refreshTokenDays * 24 * 60 * 60 * 1000
+    refreshCookieMaxAgeMs: refreshTokenDays * 24 * 60 * 60 * 1000,
+    maxActiveSessions
   };
 }
 

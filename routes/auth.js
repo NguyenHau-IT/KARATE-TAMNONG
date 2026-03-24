@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const { requireAuth, requireRoles } = require('../middlewares/auth');
 
 const {
   authConfig,
@@ -20,12 +21,16 @@ const {
   getIsoAfterDays,
   createSession,
   findSessionByRefreshHash,
+  listActiveSessionsByAccountId,
   rotateSession,
   revokeSessionById,
+  revokeSessionByIdForAccount,
   revokeAllSessionsByAccountId,
+  enforceMaxActiveSessions,
   isExpired,
   isRevoked
 } = require('../services/authSessionService');
+const { logSecurityEvent } = require('../services/authAuditLogService');
 
 const router = express.Router();
 
@@ -77,6 +82,14 @@ function setAuthCookies(res, accessToken, refreshToken) {
   res.cookie(authConfig.refreshCookieName, refreshToken, getRefreshCookieOptions());
 }
 
+async function writeAuditLog(payload) {
+  try {
+    await logSecurityEvent(payload);
+  } catch (error) {
+    return null;
+  }
+}
+
 async function issueSessionAndCookies(req, res, account) {
   const accessToken = signAccessToken({
     accountId: account.id,
@@ -99,6 +112,8 @@ async function issueSessionAndCookies(req, res, account) {
   if (created.error || !created.session) {
     return false;
   }
+
+  await enforceMaxActiveSessions(account.id, authConfig.maxActiveSessions);
 
   setAuthCookies(res, accessToken, refreshToken);
   return true;
@@ -125,6 +140,14 @@ router.post('/login', async function(req, res) {
     const nextPath = normalizeText(req.body.next);
 
     if (!username || !password) {
+      await writeAuditLog({
+        username,
+        eventType: 'login_failed',
+        status: 'failed',
+        detail: 'missing_username_or_password',
+        ipAddress: getRequestIp(req),
+        userAgent: req.get('user-agent') || ''
+      });
       return res.redirect(createLoginRedirect('', 'Vui lòng nhập tên đăng nhập và mật khẩu', nextPath));
     }
 
@@ -132,33 +155,95 @@ router.post('/login', async function(req, res) {
 
     if (accountError) {
       if (isMissingAuthTableError(accountError)) {
+        await writeAuditLog({
+          username,
+          eventType: 'login_failed',
+          status: 'failed',
+          detail: 'auth_table_not_initialized',
+          ipAddress: getRequestIp(req),
+          userAgent: req.get('user-agent') || ''
+        });
         return res.redirect(
           createLoginRedirect('', 'Hệ thống tài khoản chưa được khởi tạo. Vui lòng chạy script SQL auth.', nextPath)
         );
       }
 
+      await writeAuditLog({
+        username,
+        eventType: 'login_failed',
+        status: 'failed',
+        detail: 'account_lookup_error',
+        ipAddress: getRequestIp(req),
+        userAgent: req.get('user-agent') || ''
+      });
+
       return res.redirect(createLoginRedirect('', 'Không thể kiểm tra tài khoản lúc này', nextPath));
     }
 
     if (!account) {
+      await writeAuditLog({
+        username,
+        eventType: 'login_failed',
+        status: 'failed',
+        detail: 'account_not_found',
+        ipAddress: getRequestIp(req),
+        userAgent: req.get('user-agent') || ''
+      });
       return res.redirect(createLoginRedirect('', 'Tài khoản hoặc mật khẩu không đúng', nextPath));
     }
 
     if (!account.isActive) {
+      await writeAuditLog({
+        accountId: account.id,
+        username: account.username,
+        eventType: 'login_failed',
+        status: 'failed',
+        detail: 'account_locked',
+        ipAddress: getRequestIp(req),
+        userAgent: req.get('user-agent') || ''
+      });
       return res.redirect(createLoginRedirect('', 'Tài khoản đang bị khóa', nextPath));
     }
 
     const isValidPassword = await verifyPassword(password, account.passwordHash);
 
     if (!isValidPassword) {
+      await writeAuditLog({
+        accountId: account.id,
+        username: account.username,
+        eventType: 'login_failed',
+        status: 'failed',
+        detail: 'invalid_password',
+        ipAddress: getRequestIp(req),
+        userAgent: req.get('user-agent') || ''
+      });
       return res.redirect(createLoginRedirect('', 'Tài khoản hoặc mật khẩu không đúng', nextPath));
     }
 
     const issued = await issueSessionAndCookies(req, res, account);
 
     if (!issued) {
+      await writeAuditLog({
+        accountId: account.id,
+        username: account.username,
+        eventType: 'login_failed',
+        status: 'failed',
+        detail: 'session_issue_failed',
+        ipAddress: getRequestIp(req),
+        userAgent: req.get('user-agent') || ''
+      });
       return res.redirect(createLoginRedirect('', 'Không thể tạo phiên đăng nhập', nextPath));
     }
+
+    await writeAuditLog({
+      accountId: account.id,
+      username: account.username,
+      eventType: 'login_success',
+      status: 'success',
+      detail: 'login_ok',
+      ipAddress: getRequestIp(req),
+      userAgent: req.get('user-agent') || ''
+    });
 
     touchLastLogin(account.id).catch(function() {
       return null;
@@ -169,12 +254,119 @@ router.post('/login', async function(req, res) {
 
     return res.redirect(safeRedirect);
   } catch (error) {
+    await writeAuditLog({
+      eventType: 'login_failed',
+      status: 'failed',
+      detail: 'login_exception',
+      metadata: { message: error.message },
+      ipAddress: getRequestIp(req),
+      userAgent: req.get('user-agent') || ''
+    });
     return res.redirect(createLoginRedirect('', error.message, ''));
   }
 });
 
+router.get('/sessions', requireRoles(['admin', 'huan_luyen_vien']), async function(req, res) {
+  const accountId = req.currentUser ? req.currentUser.accountId : null;
+
+  if (!accountId) {
+    clearAuthCookies(res);
+    return res.redirect(createLoginRedirect('', 'Phiên đăng nhập không hợp lệ', ''));
+  }
+
+  const { sessions, error } = await listActiveSessionsByAccountId(accountId);
+
+  if (error) {
+    return res.render('auth-sessions', {
+      title: 'Thiết bị đang đăng nhập',
+      activePage: 'auth-sessions',
+      sessions: [],
+      currentSessionId: null,
+      message: '',
+      errorMessage: 'Không thể tải danh sách phiên đăng nhập'
+    });
+  }
+
+  const refreshToken = req.cookies ? req.cookies[authConfig.refreshCookieName] : null;
+  const currentRefreshHash = refreshToken ? hashRefreshToken(refreshToken) : null;
+  const currentSession = sessions.find(function(item) {
+    return currentRefreshHash && item.refreshTokenHash === currentRefreshHash;
+  });
+
+  return res.render('auth-sessions', {
+    title: 'Thiết bị đang đăng nhập',
+    activePage: 'auth-sessions',
+    sessions,
+    currentSessionId: currentSession ? currentSession.id : null,
+    message: req.query.message || '',
+    errorMessage: req.query.error || ''
+  });
+});
+
+router.post('/sessions/revoke/:id', requireRoles(['admin', 'huan_luyen_vien']), async function(req, res) {
+  const accountId = req.currentUser ? req.currentUser.accountId : null;
+  const sessionId = Number.parseInt(req.params.id, 10);
+
+  if (!accountId || Number.isNaN(sessionId) || sessionId <= 0) {
+    return res.redirect('/auth/sessions?error=Yêu+cầu+không+hợp+lệ');
+  }
+
+  const revokeResult = await revokeSessionByIdForAccount(sessionId, accountId);
+
+  if (revokeResult.error) {
+    await writeAuditLog({
+      accountId,
+      username: req.currentUser.username,
+      eventType: 'session_revoke',
+      status: 'failed',
+      detail: 'revoke_session_error',
+      metadata: { sessionId },
+      ipAddress: getRequestIp(req),
+      userAgent: req.get('user-agent') || ''
+    });
+    return res.redirect('/auth/sessions?error=Không+thể+thu+hồi+phiên');
+  }
+
+  if (!revokeResult.revoked) {
+    await writeAuditLog({
+      accountId,
+      username: req.currentUser.username,
+      eventType: 'session_revoke',
+      status: 'failed',
+      detail: 'revoke_session_not_owned_or_not_active',
+      metadata: { sessionId },
+      ipAddress: getRequestIp(req),
+      userAgent: req.get('user-agent') || ''
+    });
+    return res.redirect('/auth/sessions?error=Phiên+không+tồn+tại+hoặc+không+thuộc+tài+khoản');
+  }
+
+  await writeAuditLog({
+    accountId,
+    username: req.currentUser.username,
+    eventType: 'session_revoke',
+    status: 'success',
+    detail: 'revoke_single_session',
+    metadata: { sessionId },
+    ipAddress: getRequestIp(req),
+    userAgent: req.get('user-agent') || ''
+  });
+
+  const refreshToken = req.cookies ? req.cookies[authConfig.refreshCookieName] : null;
+  const refreshHash = refreshToken ? hashRefreshToken(refreshToken) : null;
+  const current = refreshHash ? await findSessionByRefreshHash(refreshHash) : { session: null };
+
+  if (!current.session) {
+    clearAuthCookies(res);
+    return res.redirect(createLoginRedirect('Phiên hiện tại đã bị thu hồi', '', ''));
+  }
+
+  return res.redirect('/auth/sessions?message=Đã+thu+hồi+phiên+đăng+nhập');
+});
+
 router.post('/logout', async function(req, res) {
   const refreshToken = req.cookies ? req.cookies[authConfig.refreshCookieName] : null;
+  let revokedSessionId = null;
 
   if (refreshToken) {
     try {
@@ -183,11 +375,23 @@ router.post('/logout', async function(req, res) {
 
       if (result.session && result.session.id) {
         await revokeSessionById(result.session.id);
+        revokedSessionId = result.session.id;
       }
     } catch (error) {
       // ignore revoke errors on logout
     }
   }
+
+  await writeAuditLog({
+    accountId: req.currentUser ? req.currentUser.accountId : null,
+    username: req.currentUser ? req.currentUser.username : null,
+    eventType: 'logout',
+    status: 'success',
+    detail: 'logout_ok',
+    metadata: revokedSessionId ? { revokedSessionId } : null,
+    ipAddress: getRequestIp(req),
+    userAgent: req.get('user-agent') || ''
+  });
 
   clearAuthCookies(res);
 
@@ -199,6 +403,15 @@ router.post('/refresh', async function(req, res) {
     const refreshToken = req.cookies ? req.cookies[authConfig.refreshCookieName] : null;
 
     if (!refreshToken) {
+      await writeAuditLog({
+        accountId: req.currentUser ? req.currentUser.accountId : null,
+        username: req.currentUser ? req.currentUser.username : null,
+        eventType: 'refresh_failed',
+        status: 'failed',
+        detail: 'missing_refresh_token',
+        ipAddress: getRequestIp(req),
+        userAgent: req.get('user-agent') || ''
+      });
       clearAuthCookies(res);
       return res.status(401).json({ ok: false, message: 'Không có refresh token' });
     }
@@ -207,11 +420,29 @@ router.post('/refresh', async function(req, res) {
     const { session, error: sessionError } = await findSessionByRefreshHash(refreshHash);
 
     if (sessionError || !session) {
+      await writeAuditLog({
+        accountId: req.currentUser ? req.currentUser.accountId : null,
+        username: req.currentUser ? req.currentUser.username : null,
+        eventType: 'refresh_failed',
+        status: 'failed',
+        detail: 'refresh_token_not_found',
+        ipAddress: getRequestIp(req),
+        userAgent: req.get('user-agent') || ''
+      });
       clearAuthCookies(res);
       return res.status(401).json({ ok: false, message: 'Refresh token không hợp lệ' });
     }
 
     if (isRevoked(session) || isExpired(session.expiresAt)) {
+      await writeAuditLog({
+        accountId: session.accountId,
+        eventType: 'token_reuse_detected',
+        status: 'failed',
+        detail: isRevoked(session) ? 'refresh_token_reused_or_revoked' : 'refresh_token_expired',
+        metadata: { sessionId: session.id },
+        ipAddress: getRequestIp(req),
+        userAgent: req.get('user-agent') || ''
+      });
       if (session.accountId) {
         await revokeAllSessionsByAccountId(session.accountId);
       }
@@ -222,6 +453,15 @@ router.post('/refresh', async function(req, res) {
     const { account, error: accountError } = await findAccountById(session.accountId);
 
     if (accountError || !account || !account.isActive) {
+      await writeAuditLog({
+        accountId: session.accountId,
+        eventType: 'refresh_failed',
+        status: 'failed',
+        detail: 'account_invalid_or_inactive',
+        metadata: { sessionId: session.id },
+        ipAddress: getRequestIp(req),
+        userAgent: req.get('user-agent') || ''
+      });
       if (session.accountId) {
         await revokeAllSessionsByAccountId(session.accountId);
       }
@@ -241,9 +481,30 @@ router.post('/refresh', async function(req, res) {
     });
 
     if (rotated.error || !rotated.session) {
+      await writeAuditLog({
+        accountId: account.id,
+        username: account.username,
+        eventType: 'refresh_failed',
+        status: 'failed',
+        detail: 'rotate_session_failed',
+        metadata: { sessionId: session.id },
+        ipAddress: getRequestIp(req),
+        userAgent: req.get('user-agent') || ''
+      });
       clearAuthCookies(res);
       return res.status(401).json({ ok: false, message: 'Không thể làm mới phiên' });
     }
+
+    await writeAuditLog({
+      accountId: account.id,
+      username: account.username,
+      eventType: 'refresh_success',
+      status: 'success',
+      detail: 'refresh_ok',
+      metadata: { oldSessionId: session.id, newSessionId: rotated.session.id },
+      ipAddress: getRequestIp(req),
+      userAgent: req.get('user-agent') || ''
+    });
 
     const accessToken = signAccessToken({
       accountId: account.id,
@@ -255,6 +516,16 @@ router.post('/refresh', async function(req, res) {
     setAuthCookies(res, accessToken, nextRefreshToken);
     return res.json({ ok: true, message: 'Đã làm mới phiên' });
   } catch (error) {
+    await writeAuditLog({
+      accountId: req.currentUser ? req.currentUser.accountId : null,
+      username: req.currentUser ? req.currentUser.username : null,
+      eventType: 'refresh_failed',
+      status: 'failed',
+      detail: 'refresh_exception',
+      metadata: { message: error.message },
+      ipAddress: getRequestIp(req),
+      userAgent: req.get('user-agent') || ''
+    });
     clearAuthCookies(res);
     return res.status(500).json({ ok: false, message: error.message });
   }

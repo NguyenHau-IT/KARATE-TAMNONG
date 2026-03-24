@@ -1,0 +1,81 @@
+<%- include('partials/header', { title, activePage: 'auth-sessions' }) %>
+
+<div class="container">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+      <p class="text-uppercase text-secondary small fw-semibold mb-1">Bảo mật tài khoản</p>
+      <h1 class="h2 mb-2">Thiết bị đang đăng nhập</h1>
+      <p class="text-secondary mb-0">Quản lý các phiên đăng nhập đang hoạt động và thu hồi từng phiên khi cần.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/auth/sessions">Làm mới</a>
+  </div>
+
+  <% if (message) { %>
+    <div class="alert alert-success"><%= message %></div>
+  <% } %>
+
+  <% if (errorMessage) { %>
+    <div class="alert alert-danger"><%= errorMessage %></div>
+  <% } %>
+
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">Danh sách phiên hoạt động</h2>
+        <span class="badge text-bg-secondary"><%= sessions.length %> phiên</span>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>ID</th>
+              <th>Thiết bị</th>
+              <th>IP</th>
+              <th>Tạo lúc</th>
+              <th>Hết hạn</th>
+              <th>Trạng thái</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (!sessions.length) { %>
+              <tr>
+                <td colspan="7" class="text-center text-secondary py-4">Không có phiên đăng nhập nào đang hoạt động.</td>
+              </tr>
+            <% } %>
+
+            <% sessions.forEach(function(item) { %>
+              <% const isCurrent = currentSessionId && currentSessionId === item.id; %>
+              <tr>
+                <td><%= item.id %></td>
+                <td class="small"><%= item.userAgent || 'Không xác định' %></td>
+                <td><%= item.ipAddress || '---' %></td>
+                <td><%= item.createdAt ? new Date(item.createdAt).toLocaleString('vi-VN') : '---' %></td>
+                <td><%= item.expiresAt ? new Date(item.expiresAt).toLocaleString('vi-VN') : '---' %></td>
+                <td>
+                  <% if (isCurrent) { %>
+                    <span class="badge text-bg-success">Phiên hiện tại</span>
+                  <% } else { %>
+                    <span class="badge text-bg-secondary">Đang hoạt động</span>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (isCurrent) { %>
+                    <span class="text-secondary small">Không thể thu hồi tại đây</span>
+                  <% } else { %>
+                    <form method="post" action="/auth/sessions/revoke/<%= item.id %>" onsubmit="return confirm('Thu hồi phiên đăng nhập này?');">
+                      <button type="submit" class="btn btn-sm btn-outline-danger">Thu hồi</button>
+                    </form>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

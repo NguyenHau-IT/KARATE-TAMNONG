@@ -72,6 +72,13 @@
                   Check-in PIN
                 </a>
               </li>
+              <% if (currentUser.role !== 'vo_sinh') { %>
+                <li class="nav-item">
+                  <a class="nav-link <%= activePage === 'auth-sessions' ? 'active fw-semibold' : '' %>" href="/auth/sessions">
+                    Thiết bị đăng nhập
+                  </a>
+                </li>
+              <% } %>
             </ul>
             <div class="d-flex align-items-center gap-2 ms-lg-3">
               <span class="small text-secondary">
