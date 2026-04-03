@@ -182,7 +182,8 @@ router.post('/tao-tai-khoan', async function(req, res) {
       mat_khau_hash: passwordHash,
       vai_tro: payload.role,
       vo_sinh_id: payload.role === 'vo_sinh' ? payload.voSinhId : null,
-      is_active: true
+      is_active: true,
+      must_change_password: true
     });
 
     if (createError) {

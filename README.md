@@ -56,6 +56,7 @@ Biến môi trường liên quan:
 
 ### Flow token hiện tại
 - Login: tạo access token (ngắn hạn) + refresh token (dài hạn).
+- Tài khoản do admin cấp mới sẽ bị yêu cầu đổi mật khẩu lần đầu tại `/auth/first-password` trước khi vào khu vực nghiệp vụ.
 - Mỗi lần refresh: tạo refresh token mới và revoke token cũ (rotation).
 - Nếu refresh token bị dùng lại sau khi đã rotate: toàn bộ session của tài khoản sẽ bị revoke.
 - Có màn hình quản trị phiên tại `/auth/sessions` để xem thiết bị đang đăng nhập và thu hồi từng phiên.

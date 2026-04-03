@@ -8,6 +8,7 @@ create table if not exists public.tai_khoan (
   vai_tro varchar(32) not null check (vai_tro in ('admin', 'huan_luyen_vien', 'vo_sinh')),
   vo_sinh_id bigint null references public.vo_sinh(id) on delete set null,
   is_active boolean not null default true,
+  must_change_password boolean not null default false,
   lan_dang_nhap_cuoi timestamptz null,
   ngay_tao timestamptz not null default now(),
   ngay_cap_nhat timestamptz not null default now(),

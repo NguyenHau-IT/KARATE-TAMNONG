@@ -29,8 +29,13 @@ function mapCurrentUserFromPayload(payload) {
     accountId: payload.accountId || null,
     username: payload.username,
     role: payload.role,
-    linkedVoSinhId: payload.linkedVoSinhId || null
+    linkedVoSinhId: payload.linkedVoSinhId || null,
+    mustChangePassword: payload.mustChangePassword === true
   };
+}
+
+function shouldRedirectToFirstPassword(req) {
+  return Boolean(req.currentUser && req.currentUser.mustChangePassword);
 }
 
 function setAuthCookies(res, accessToken, refreshToken) {
@@ -138,7 +143,8 @@ async function tryRefreshFromRequest(req, res) {
     accountId: account.id,
     username: account.username,
     role: account.role,
-    linkedVoSinhId: account.linkedVoSinhId || null
+    linkedVoSinhId: account.linkedVoSinhId || null,
+    mustChangePassword: account.mustChangePassword === true
   });
 
   setAuthCookies(res, accessToken, nextRefreshToken);
@@ -231,6 +237,10 @@ async function requireAuth(req, res, next) {
       return res.redirect(`/auth/login?error=Vui+lòng+đăng+nhập&next=${nextPath}`);
     }
 
+    if (shouldRedirectToFirstPassword(req) && !String(req.originalUrl || '').startsWith('/auth/first-password')) {
+      return res.redirect('/auth/first-password?error=Vui+lòng+đổi+mật+khẩu+tạm+trước+khi+tiếp+tục');
+    }
+
     return next();
   } catch (error) {
     return next(error);
@@ -255,6 +265,10 @@ function requireRoles(roles) {
       if (!req.currentUser) {
         const nextPath = encodeURIComponent(req.originalUrl || '/');
         return res.redirect(`/auth/login?error=Vui+lòng+đăng+nhập&next=${nextPath}`);
+      }
+
+      if (shouldRedirectToFirstPassword(req)) {
+        return res.redirect('/auth/first-password?error=Vui+lòng+đổi+mật+khẩu+tạm+trước+khi+tiếp+tục');
       }
 
       if (!allowed.includes(req.currentUser.role)) {

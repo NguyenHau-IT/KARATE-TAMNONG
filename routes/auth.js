@@ -14,6 +14,7 @@ const {
 const {
   findAccountByUsername,
   findAccountById,
+  updateAccountPassword,
   touchLastLogin,
   isMissingAuthTableError
 } = require('../services/authAccountService');
@@ -73,6 +74,10 @@ function getDefaultRedirectByRole(role) {
   return '/';
 }
 
+function shouldRedirectToFirstPassword(currentUser) {
+  return Boolean(currentUser && currentUser.mustChangePassword);
+}
+
 function getRequestIp(req) {
   return req.ip || (req.headers && req.headers['x-forwarded-for']) || null;
 }
@@ -95,7 +100,8 @@ async function issueSessionAndCookies(req, res, account) {
     accountId: account.id,
     username: account.username,
     role: account.role,
-    linkedVoSinhId: account.linkedVoSinhId || null
+    linkedVoSinhId: account.linkedVoSinhId || null,
+    mustChangePassword: account.mustChangePassword === true
   });
 
   const refreshToken = generateRefreshToken();
@@ -121,6 +127,10 @@ async function issueSessionAndCookies(req, res, account) {
 
 router.get('/login', function(req, res) {
   if (req.currentUser) {
+    if (shouldRedirectToFirstPassword(req.currentUser)) {
+      return res.redirect('/auth/first-password');
+    }
+
     return res.redirect(getDefaultRedirectByRole(req.currentUser.role));
   }
 
@@ -248,6 +258,10 @@ router.post('/login', async function(req, res) {
     touchLastLogin(account.id).catch(function() {
       return null;
     });
+
+    if (account.mustChangePassword) {
+      return res.redirect('/auth/first-password');
+    }
 
     const defaultRedirect = getDefaultRedirectByRole(account.role);
     const safeRedirect = nextPath && nextPath.startsWith('/') ? nextPath : defaultRedirect;
@@ -398,6 +412,78 @@ router.post('/logout', async function(req, res) {
   return res.redirect(createLoginRedirect('Đăng xuất thành công', '', ''));
 });
 
+router.get('/first-password', requireAuth, function(req, res) {
+  if (!shouldRedirectToFirstPassword(req.currentUser)) {
+    return res.redirect(getDefaultRedirectByRole(req.currentUser.role));
+  }
+
+  return res.render('auth-first-password', {
+    title: 'Đổi mật khẩu lần đầu',
+    activePage: 'first-password',
+    message: req.query.message || '',
+    errorMessage: req.query.error || ''
+  });
+});
+
+router.post('/first-password', requireAuth, async function(req, res) {
+  try {
+    if (!shouldRedirectToFirstPassword(req.currentUser)) {
+      return res.redirect(getDefaultRedirectByRole(req.currentUser.role));
+    }
+
+    const nextPassword = normalizeText(req.body.new_password);
+    const confirmPassword = normalizeText(req.body.confirm_password);
+
+    if (!nextPassword || !confirmPassword) {
+      return res.redirect('/auth/first-password?error=Vui+lòng+nhập+đủ+2+trường+mật+khẩu');
+    }
+
+    if (nextPassword.length < 6) {
+      return res.redirect('/auth/first-password?error=Mật+khẩu+mới+phải+có+ít+nhất+6+ký+tự');
+    }
+
+    if (nextPassword !== confirmPassword) {
+      return res.redirect('/auth/first-password?error=Xác+nhận+mật+khẩu+không+khớp');
+    }
+
+    const { account, error: accountError } = await findAccountById(req.currentUser.accountId);
+
+    if (accountError || !account) {
+      return res.redirect('/auth/first-password?error=Không+thể+tải+thông+tin+tài+khoản');
+    }
+
+    const isSameAsCurrent = await verifyPassword(nextPassword, account.passwordHash);
+
+    if (isSameAsCurrent) {
+      return res.redirect('/auth/first-password?error=Mật+khẩu+mới+không+được+trùng+mật+khẩu+tạm');
+    }
+
+    const nextPasswordHash = await bcrypt.hash(nextPassword, 10);
+    const updated = await updateAccountPassword(account.id, nextPasswordHash);
+
+    if (!updated.ok) {
+      return res.redirect('/auth/first-password?error=Không+thể+cập+nhật+mật+khẩu+lúc+này');
+    }
+
+    await revokeAllSessionsByAccountId(account.id);
+
+    await writeAuditLog({
+      accountId: account.id,
+      username: account.username,
+      eventType: 'password_first_change',
+      status: 'success',
+      detail: 'first_password_changed',
+      ipAddress: getRequestIp(req),
+      userAgent: req.get('user-agent') || ''
+    });
+
+    clearAuthCookies(res);
+    return res.redirect(createLoginRedirect('Đổi+mật+khẩu+lần+đầu+thành+công,+vui+lòng+đăng+nhập+lại', '', ''));
+  } catch (error) {
+    return res.redirect('/auth/first-password?error=Không+thể+cập+nhật+mật+khẩu+lúc+này');
+  }
+});
+
 router.post('/refresh', async function(req, res) {
   try {
     const refreshToken = req.cookies ? req.cookies[authConfig.refreshCookieName] : null;
@@ -510,7 +596,8 @@ router.post('/refresh', async function(req, res) {
       accountId: account.id,
       username: account.username,
       role: account.role,
-      linkedVoSinhId: account.linkedVoSinhId || null
+      linkedVoSinhId: account.linkedVoSinhId || null,
+      mustChangePassword: account.mustChangePassword === true
     });
 
     setAuthCookies(res, accessToken, nextRefreshToken);

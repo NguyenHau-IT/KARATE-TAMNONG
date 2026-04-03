@@ -50,7 +50,8 @@ function mapAccountRow(row) {
     role,
     passwordHash: row.mat_khau_hash || '',
     linkedVoSinhId,
-    isActive: row.is_active !== false
+    isActive: row.is_active !== false,
+    mustChangePassword: row.must_change_password === true
   };
 }
 
@@ -63,7 +64,7 @@ async function findAccountByUsername(username) {
 
   const { data, error } = await supabase
     .from('tai_khoan')
-    .select('id, ten_dang_nhap, mat_khau_hash, vai_tro, vo_sinh_id, is_active')
+    .select('id, ten_dang_nhap, mat_khau_hash, vai_tro, vo_sinh_id, is_active, must_change_password')
     .eq('ten_dang_nhap', normalized)
     .maybeSingle();
 
@@ -95,7 +96,7 @@ async function findAccountById(accountId) {
 
   const { data, error } = await supabase
     .from('tai_khoan')
-    .select('id, ten_dang_nhap, mat_khau_hash, vai_tro, vo_sinh_id, is_active')
+    .select('id, ten_dang_nhap, mat_khau_hash, vai_tro, vo_sinh_id, is_active, must_change_password')
     .eq('id', accountId)
     .maybeSingle();
 
@@ -106,9 +107,31 @@ async function findAccountById(accountId) {
   return { account: mapAccountRow(data), error: null };
 }
 
+async function updateAccountPassword(accountId, passwordHash) {
+  if (!accountId || !passwordHash) {
+    return { ok: false, error: new Error('missing_account_or_password_hash') };
+  }
+
+  const { error } = await supabase
+    .from('tai_khoan')
+    .update({
+      mat_khau_hash: passwordHash,
+      must_change_password: false,
+      ngay_cap_nhat: new Date().toISOString()
+    })
+    .eq('id', accountId);
+
+  if (error) {
+    return { ok: false, error };
+  }
+
+  return { ok: true, error: null };
+}
+
 module.exports = {
   findAccountByUsername,
   findAccountById,
+  updateAccountPassword,
   touchLastLogin,
   isMissingAuthTableError
 };
