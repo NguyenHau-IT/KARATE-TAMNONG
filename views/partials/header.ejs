@@ -46,6 +46,13 @@
                     Quản lý võ sinh
                   </a>
                 </li>
+                <% if (currentUser.role === 'admin') { %>
+                  <li class="nav-item">
+                    <a class="nav-link <%= activePage === 'users' ? 'active fw-semibold' : '' %>" href="/users">
+                      Tài khoản
+                    </a>
+                  </li>
+                <% } %>
                 <li class="nav-item">
                   <a class="nav-link <%= activePage === 'lop-vo' ? 'active fw-semibold' : '' %>" href="/lop-vo">
                     Lớp võ
