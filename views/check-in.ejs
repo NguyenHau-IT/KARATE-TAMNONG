@@ -1,13 +1,13 @@
-<%- include('partials/header', { title, activePage: 'check-in-pin' }) %>
+<%- include('partials/header', { title, activePage: 'check-in' }) %>
 
 <div class="container">
   <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
     <div>
       <p class="text-uppercase text-secondary small fw-semibold mb-1">Karate Tamnong</p>
-      <h1 class="h2 mb-2">Check-in bằng PIN</h1>
-      <p class="text-secondary mb-0">Võ sinh nhập mã PIN theo buổi học để điểm danh có mặt.</p>
+      <h1 class="h2 mb-2">Điểm danh võ sinh</h1>
+      <p class="text-secondary mb-0">Võ sinh có thể điểm danh bằng QR hoặc PIN trên cùng một màn hình.</p>
     </div>
-    <a class="btn btn-outline-secondary" href="/check-in-pin">Làm mới</a>
+    <a class="btn btn-outline-secondary" href="/check-in">Làm mới</a>
   </div>
 
   <% if (message) { %>
@@ -19,10 +19,10 @@
 
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
-      <form method="get" action="/check-in-pin" class="row g-3 align-items-end">
+      <form method="get" action="/check-in" class="row g-3 align-items-end">
         <div class="col-lg-8">
           <label class="form-label" for="buoi_hoc_id">Chọn buổi học</label>
-          <select class="form-select" id="buoi_hoc_id" name="buoi_hoc_id" required>
+          <select class="form-select" id="buoi_hoc_id" name="buoi_hoc_id">
             <option value="">Chọn buổi học</option>
             <% buoiHocList.forEach(function(item) { %>
               <option value="<%= item.id %>" <%= selectedBuoiHocId === item.id ? 'selected' : '' %>>
@@ -39,24 +39,21 @@
     </div>
   </div>
 
-  <% if (selectedBuoiHocId && selectedBuoiHoc) { %>
+  <% if (selectedBuoiHoc) { %>
     <div class="row g-4">
-      <div class="col-lg-6">
+      <div class="col-lg-7">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-body">
-            <h2 class="h5 mb-3">Nhập mã PIN</h2>
+            <h2 class="h5 mb-3">Xác nhận điểm danh</h2>
+            <div class="mb-3 text-secondary small">
+              Buổi: <strong>#<%= selectedBuoiHoc.id %></strong> —
+              <strong><%= selectedBuoiHoc.lop_vo ? selectedBuoiHoc.lop_vo.ten_lop : ('Lớp #' + selectedBuoiHoc.lop_vo_id) %></strong>
+              (<%= selectedBuoiHoc.ngay_hoc %>, <%= selectedBuoiHoc.gio_bat_dau || '--:--' %> - <%= selectedBuoiHoc.gio_ket_thuc || '--:--' %>)
+            </div>
 
-            <% if (activePin) { %>
-              <div class="alert alert-info">
-                PIN đang hiệu lực cho buổi này đã được tạo.<br />
-                Hết hạn lúc: <strong><%= new Date(activePin.expiresAt).toLocaleTimeString('vi-VN') %></strong>
-              </div>
-            <% } else { %>
-              <div class="alert alert-warning">Buổi học này chưa có PIN hiệu lực. Vui lòng nhờ HLV tạo PIN trong tab Buổi học.</div>
-            <% } %>
-
-            <form method="post" action="/check-in-pin" class="vstack gap-3">
-              <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId %>" />
+            <form method="post" action="/check-in" class="vstack gap-3">
+              <input type="hidden" name="token" value="<%= token || '' %>" />
+              <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId || '' %>" />
 
               <div>
                 <label class="form-label" for="vo_sinh_id">Võ sinh</label>
@@ -79,7 +76,7 @@
               </div>
 
               <div>
-                <label class="form-label" for="pin_code">Mã PIN</label>
+                <label class="form-label" for="pin_code">Mã PIN (nếu không dùng QR)</label>
                 <input
                   class="form-control"
                   id="pin_code"
@@ -87,26 +84,25 @@
                   maxlength="4"
                   pattern="\d{4}"
                   inputmode="numeric"
-                  required
                   placeholder="Nhập mã PIN 4 số"
+                  <%= token ? 'disabled' : '' %>
                 />
               </div>
 
-              <button class="btn btn-success" type="submit">Check-in</button>
+              <button class="btn btn-success" type="submit">Điểm danh</button>
             </form>
           </div>
         </div>
       </div>
 
-      <div class="col-lg-6">
+      <div class="col-lg-5">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-body">
-            <h2 class="h5 mb-3">Gợi ý thao tác</h2>
+            <h2 class="h5 mb-3">Cách dùng</h2>
             <ol class="mb-0 text-secondary">
-              <li>Huấn luyện viên vào tab Buổi học để tạo PIN cho buổi hiện tại.</li>
-              <li>Võ sinh chọn đúng buổi học và tên mình.</li>
-              <li>Nhập mã PIN 4 số và bấm Check-in.</li>
-              <li>Nếu PIN hết hạn, yêu cầu HLV tạo lại PIN mới.</li>
+              <li>Nếu quét QR, hệ thống tự nhận buổi học qua token.</li>
+              <li>Nếu nhập PIN, chọn đúng buổi học rồi nhập mã 4 số.</li>
+              <li>Đến trễ/không kịp tự điểm danh sẽ do HLV xử lý ở màn hình điểm danh thủ công.</li>
             </ol>
           </div>
         </div>

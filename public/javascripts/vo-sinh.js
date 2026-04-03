@@ -16,6 +16,8 @@
   }
 
   const fields = {
+    maVoSinh: document.getElementById('ma_vo_sinh'),
+    khoaNhapHoc: document.getElementById('khoa_nhap_hoc'),
     hoTen: document.getElementById('ho_ten'),
     gioiTinh: document.getElementById('gioi_tinh'),
     namSinh: document.getElementById('nam_sinh'),
@@ -107,6 +109,8 @@
 
   function setEditMode(item) {
     editingIdInput.value = item.id;
+    fields.maVoSinh.value = item.ma_vo_sinh || '';
+    fields.khoaNhapHoc.value = item.khoa_nhap_hoc || '';
     fields.hoTen.value = item.ho_ten || '';
     fields.gioiTinh.value = item.gioi_tinh || '';
     fields.namSinh.value = item.nam_sinh || '';
@@ -145,6 +149,7 @@
     row.dataset.id = item.id;
 
     const values = [
+      item.ma_vo_sinh || 'Chưa có mã',
       String(item.id),
       item.ho_ten,
       item.gioi_tinh || 'Chưa cập nhật',
@@ -163,7 +168,7 @@
         cell.className = 'fw-semibold';
       }
 
-      if (index === 6) {
+      if (index === 7) {
         const parentName = document.createElement('div');
         parentName.textContent = item.ho_ten_phu_huynh || 'Chưa có';
         const parentPhone = document.createElement('div');
@@ -255,6 +260,8 @@
 
     const editingId = editingIdInput.value;
     const body = {
+      ma_vo_sinh: fields.maVoSinh.value,
+      khoa_nhap_hoc: fields.khoaNhapHoc.value,
       ho_ten: fields.hoTen.value,
       gioi_tinh: fields.gioiTinh.value,
       nam_sinh: fields.namSinh.value,

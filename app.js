@@ -14,7 +14,7 @@ var buoiHocRouter = require('./routes/buoiHoc');
 var diemDanhRouter = require('./routes/diemDanh');
 var lopVoRouter = require('./routes/lopVo');
 var vangMatRouter = require('./routes/vangMat');
-var checkInPinRouter = require('./routes/checkInPin');
+var checkInRouter = require('./routes/checkIn');
 
 var app = express();
 
@@ -38,7 +38,9 @@ app.use('/lop-vo', requireRoles(['admin', 'huan_luyen_vien']), lopVoRouter);
 app.use('/buoi-hoc', requireRoles(['admin', 'huan_luyen_vien']), buoiHocRouter);
 app.use('/diem-danh', requireRoles(['admin', 'huan_luyen_vien']), diemDanhRouter);
 app.use('/vang-mat', requireRoles(['admin', 'huan_luyen_vien']), vangMatRouter);
-app.use('/check-in-pin', requireRoles(['admin', 'huan_luyen_vien', 'vo_sinh']), checkInPinRouter);
+app.use('/check-in', requireRoles(['admin', 'huan_luyen_vien', 'vo_sinh']), checkInRouter);
+app.use('/check-in-pin', requireRoles(['admin', 'huan_luyen_vien', 'vo_sinh']), checkInRouter);
+app.use('/check-in-qr', requireRoles(['admin', 'huan_luyen_vien', 'vo_sinh']), checkInRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

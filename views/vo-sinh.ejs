@@ -24,6 +24,32 @@
           <form id="voSinhForm">
             <input id="vo_sinh_editing_id" type="hidden" value="" />
 
+            <div class="row g-3 mb-3">
+              <div class="col-md-7">
+                <label for="ma_vo_sinh" class="form-label">Mã võ sinh</label>
+                <input
+                  id="ma_vo_sinh"
+                  name="ma_vo_sinh"
+                  type="text"
+                  maxlength="20"
+                  class="form-control"
+                  placeholder="Ví dụ: K26-00001 (để trống để tự sinh)"
+                />
+              </div>
+              <div class="col-md-5">
+                <label for="khoa_nhap_hoc" class="form-label">Khóa nhập học</label>
+                <input
+                  id="khoa_nhap_hoc"
+                  name="khoa_nhap_hoc"
+                  type="number"
+                  min="2000"
+                  max="2100"
+                  class="form-control"
+                  placeholder="Ví dụ: 2026"
+                />
+              </div>
+            </div>
+
             <div class="mb-3">
               <label for="ho_ten" class="form-label">Họ tên võ sinh</label>
               <input
@@ -121,6 +147,23 @@
 
             <button id="voSinhSubmitButton" class="btn btn-primary w-100 mt-4" type="submit">Thêm võ sinh</button>
           </form>
+
+          <hr class="my-4" />
+
+          <h3 class="h6 mb-3">Import nhanh bằng CSV</h3>
+          <form method="post" action="/vo-sinh/import-csv" enctype="multipart/form-data" class="vstack gap-3">
+            <div>
+              <label for="csv_file" class="form-label">Chọn file CSV</label>
+              <input id="csv_file" name="csv_file" type="file" accept=".csv,text/csv" class="form-control" required />
+            </div>
+
+            <div class="small text-secondary">
+              Header hỗ trợ (khuyến nghị):
+              <code>ma_vo_sinh,khoa_nhap_hoc,ho_ten,gioi_tinh,nam_sinh,bac_dai_id,so_dien_thoai,dia_chi,ho_ten_phu_huynh,so_dien_thoai_phu_huynh</code>
+            </div>
+
+            <button class="btn btn-outline-primary" type="submit">Import CSV</button>
+          </form>
         </div>
       </div>
     </div>
@@ -143,6 +186,7 @@
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light">
                 <tr>
+                  <th>Mã võ sinh</th>
                   <th>ID</th>
                   <th>Họ tên</th>
                   <th>Giới tính</th>
@@ -159,6 +203,7 @@
                 <% voSinhList.forEach(function(item) { %>
                   <% const bacDai = bacDaiList.find(function(bd) { return bd.id === item.bac_dai_id; }); %>
                   <tr data-id="<%= item.id %>">
+                    <td class="fw-semibold"><%= item.ma_vo_sinh || 'Chưa có mã' %></td>
                     <td><%= item.id %></td>
                     <td class="fw-semibold"><%= item.ho_ten %></td>
                     <td><%= item.gioi_tinh || 'Chưa cập nhật' %></td>

@@ -67,11 +67,13 @@
                   </a>
                 </li>
               <% } %>
-              <li class="nav-item">
-                <a class="nav-link <%= activePage === 'check-in-pin' ? 'active fw-semibold' : '' %>" href="/check-in-pin">
-                  Check-in PIN
-                </a>
-              </li>
+              <% if (currentUser.role === 'vo_sinh') { %>
+                <li class="nav-item">
+                  <a class="nav-link <%= activePage === 'check-in' ? 'active fw-semibold' : '' %>" href="/check-in">
+                    Điểm danh
+                  </a>
+                </li>
+              <% } %>
               <% if (currentUser.role !== 'vo_sinh') { %>
                 <li class="nav-item">
                   <a class="nav-link <%= activePage === 'auth-sessions' ? 'active fw-semibold' : '' %>" href="/auth/sessions">

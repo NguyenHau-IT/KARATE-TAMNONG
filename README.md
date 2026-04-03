@@ -12,6 +12,16 @@ Hệ thống quản lý võ sinh và điểm danh theo hướng Express + EJS + 
 	- `/buoi-hoc` Quản lý buổi học (tạo/xóa)
 	- `/diem-danh` Điểm danh theo buổi học
 	- `/vang-mat` Tab vắng mặt theo buổi học
+	- `/check-in` Điểm danh võ sinh (gộp PIN/QR)
+
+## Luồng điểm danh mới
+- Tại `/buoi-hoc`, dùng nút **Điểm danh** để mở tab trình chiếu điểm danh cho từng buổi.
+- Tab trình chiếu hiển thị QR phóng to + PIN 4 số + countdown dùng chung.
+- Hết countdown: QR/PIN tự hết hiệu lực, PIN bị ẩn và hiện cảnh báo hết hạn.
+- Có 2 view nghiệp vụ:
+  - View võ sinh tự thao tác: `/check-in` (dùng QR hoặc PIN).
+  - View HLV xử lý thủ công các ca chưa kịp điểm danh: `/diem-danh?buoi_hoc_id=`.
+- Chi tiết: [DIEM_DANH_TRUC_TIEP_FLOW.md](DIEM_DANH_TRUC_TIEP_FLOW.md)
 
 ## Phân quyền đăng nhập (Production)
 - Hệ thống hiện tại dùng **DB-backed auth** với bảng `tai_khoan` trên Supabase.
@@ -60,15 +70,7 @@ Biến môi trường liên quan:
 4. Chạy dev: `npm run dev`
 
 ## Quy trình phát triển kèm kiểm thử (bắt buộc)
-Mỗi tính năng mới phải đi theo chu kỳ sau:
-1. **Phân tích yêu cầu + tiêu chí Done**
-2. **Viết/điều chỉnh mã**
-3. **Kiểm thử ngay trong vòng phát triển**
-	- Test luồng chính (happy path)
-	- Test lỗi validate/nghiệp vụ
-	- Test hồi quy luồng cũ bị ảnh hưởng
-4. **Cập nhật tài liệu liên quan**
-5. **Chỉ chốt khi đã pass checklist test**
+Quy trình chi tiết đã được chuẩn hóa tại: [QUY_TRINH_DEV_TEST.md](QUY_TRINH_DEV_TEST.md)
 
 Checklist nhanh trước commit:
 - [ ] Không lỗi runtime/lint ở phần đã sửa
@@ -79,6 +81,9 @@ Checklist nhanh trước commit:
 ## Tài liệu liên quan
 - [AUTH_TOKEN_SECURITY.md](AUTH_TOKEN_SECURITY.md)
 - [DB_CONVENTION.md](DB_CONVENTION.md)
+- [DOCS_CONSOLIDATION.md](DOCS_CONSOLIDATION.md)
+- [DIEM_DANH_TRUC_TIEP_FLOW.md](DIEM_DANH_TRUC_TIEP_FLOW.md)
+- [IMPORT_CSV_VO_SINH.md](IMPORT_CSV_VO_SINH.md)
 - [MA_TRAN_DB_API_MVP.md](MA_TRAN_DB_API_MVP.md)
 - [MODULE_BUOI_HOC.md](MODULE_BUOI_HOC.md)
 - [MODULE_DIEM_DANH.md](MODULE_DIEM_DANH.md)
@@ -86,3 +91,5 @@ Checklist nhanh trước commit:
 - [RESPONSE_MAU_JSON.md](RESPONSE_MAU_JSON.md)
 - [TEST_API_KICH_BAN.md](TEST_API_KICH_BAN.md)
 - [TEST_MANUAL_AUTH_TOKEN.md](TEST_MANUAL_AUTH_TOKEN.md)
+- [TEST_MANUAL_IMPORT_CSV.md](TEST_MANUAL_IMPORT_CSV.md)
+- [TEST_MANUAL_QR_CHECKIN.md](TEST_MANUAL_QR_CHECKIN.md)

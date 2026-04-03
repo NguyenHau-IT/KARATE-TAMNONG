@@ -1,7 +1,7 @@
 const express = require('express');
 
 const supabase = require('../config/supabase');
-const attendancePinStore = require('../utils/attendancePinStore');
+const attendanceSessionStore = require('../utils/attendanceSessionStore');
 
 const router = express.Router();
 
@@ -122,7 +122,7 @@ async function loadBuoiHocList() {
 router.get('/', async function(req, res, next) {
   try {
     const [lopVoList, buoiHocList] = await Promise.all([loadLopVoList(), loadBuoiHocList()]);
-    const activePinMap = attendancePinStore.getActivePinMap(
+    const activeAttendanceMap = attendanceSessionStore.getActiveMap(
       buoiHocList.map(function(item) {
         return item.id;
       })
@@ -133,7 +133,7 @@ router.get('/', async function(req, res, next) {
       activePage: 'buoi-hoc',
       lopVoList,
       buoiHocList,
-      activePinMap,
+      activeAttendanceMap,
       message: req.query.message || '',
       errorMessage: req.query.error || ''
     });
@@ -236,7 +236,7 @@ router.post('/xoa/:id', async function(req, res) {
   }
 });
 
-router.post('/tao-pin/:id', async function(req, res) {
+router.get('/diem-danh/:id', async function(req, res) {
   try {
     const buoiHocId = parsePositiveInt(req.params.id);
     const safeTtlMinutes = 1;
@@ -245,7 +245,11 @@ router.post('/tao-pin/:id', async function(req, res) {
       return res.redirect(createRedirectWithMessage('/buoi-hoc', '', 'ID buổi học không hợp lệ'));
     }
 
-    const { data: buoiHoc, error } = await supabase.from('buoi_hoc').select('id').eq('id', buoiHocId).maybeSingle();
+    const { data: buoiHoc, error } = await supabase
+      .from('buoi_hoc')
+      .select('id, lop_vo_id, ngay_hoc, gio_bat_dau, gio_ket_thuc, lop_vo:lop_vo_id(id, ten_lop)')
+      .eq('id', buoiHocId)
+      .maybeSingle();
 
     if (error) {
       return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
@@ -255,15 +259,19 @@ router.post('/tao-pin/:id', async function(req, res) {
       return res.redirect(createRedirectWithMessage('/buoi-hoc', '', 'Không tìm thấy buổi học'));
     }
 
-    const pinData = attendancePinStore.generatePin(buoiHocId, safeTtlMinutes);
+    const attendance = attendanceSessionStore.generate(buoiHocId, safeTtlMinutes);
+    const appBaseUrl = `${req.protocol}://${req.get('host')}`;
+    const checkInUrl = `${appBaseUrl}/check-in?token=${encodeURIComponent(attendance.token)}`;
 
-    return res.redirect(
-      createRedirectWithMessage(
-        '/buoi-hoc',
-        `Đã tạo PIN ${pinData.pin} cho buổi #${buoiHocId} (hết hạn lúc ${new Date(pinData.expiresAt).toLocaleTimeString('vi-VN')})`,
-        ''
-      )
-    );
+    return res.render('diem-danh-truc-tiep', {
+      title: 'Điểm danh trực tiếp',
+      activePage: 'buoi-hoc',
+      buoiHoc,
+      attendance,
+      checkInUrl,
+      message: req.query.message || '',
+      errorMessage: req.query.error || ''
+    });
   } catch (error) {
     return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
   }

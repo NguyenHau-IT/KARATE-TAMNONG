@@ -72,7 +72,7 @@
                   <th>Lớp võ</th>
                   <th>Ngày học</th>
                   <th>Khung giờ</th>
-                  <th>PIN điểm danh</th>
+                  <th>Phiên điểm danh</th>
                   <th>Ghi chú</th>
                   <th>Thao tác</th>
                 </tr>
@@ -84,28 +84,28 @@
                   </tr>
                 <% } %>
                 <% buoiHocList.forEach(function(item) { %>
-                  <% const pinInfo = activePinMap ? activePinMap[item.id] : null; %>
+                  <% const attendanceInfo = activeAttendanceMap ? activeAttendanceMap[item.id] : null; %>
                   <tr>
                     <td><%= item.id %></td>
                     <td><%= item.lop_vo ? item.lop_vo.ten_lop : ('#' + item.lop_vo_id) %></td>
                     <td><%= item.ngay_hoc %></td>
                     <td><%= item.gio_bat_dau || '--:--' %> - <%= item.gio_ket_thuc || '--:--' %></td>
                     <td>
-                      <% if (pinInfo) { %>
-                        <div class="fw-semibold text-success"><%= pinInfo.pin %></div>
-                        <div class="small text-secondary">Hết hạn: <%= new Date(pinInfo.expiresAt).toLocaleTimeString('vi-VN') %></div>
+                      <% if (attendanceInfo) { %>
+                        <div class="small text-success fw-semibold">Đang hoạt động</div>
+                        <div class="small text-secondary">PIN: <strong><%= attendanceInfo.pin %></strong></div>
+                        <div class="small text-secondary">Hết hạn: <%= new Date(attendanceInfo.expiresAt).toLocaleTimeString('vi-VN') %></div>
                       <% } else { %>
-                        <span class="text-secondary">Chưa tạo</span>
+                        <span class="text-secondary">Chưa mở phiên</span>
                       <% } %>
                     </td>
                     <td><%= item.ghi_chu || '---' %></td>
                     <td>
                       <div class="d-flex flex-wrap gap-2">
-                        <a class="btn btn-sm btn-outline-primary" href="/diem-danh?buoi_hoc_id=<%= item.id %>">Điểm danh</a>
-                        <a class="btn btn-sm btn-outline-success" href="/check-in-pin?buoi_hoc_id=<%= item.id %>">Check-in PIN</a>
-                        <form method="post" action="/buoi-hoc/tao-pin/<%= item.id %>" class="d-flex gap-1">
-                          <button class="btn btn-sm btn-success" type="submit">Generate PIN (1 phút)</button>
-                        </form>
+                        <a class="btn btn-sm btn-primary" href="/buoi-hoc/diem-danh/<%= item.id %>" target="_blank" rel="noopener">
+                          Điểm danh
+                        </a>
+                        <a class="btn btn-sm btn-outline-secondary" href="/diem-danh?buoi_hoc_id=<%= item.id %>">Điểm danh thủ công</a>
                         <form method="post" action="/buoi-hoc/xoa/<%= item.id %>" onsubmit="return confirm('Xóa buổi học này?');">
                           <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
                         </form>
