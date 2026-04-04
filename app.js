@@ -18,6 +18,10 @@ var checkInRouter = require('./routes/checkIn');
 
 var app = express();
 
+if (process.env.APP_TRUST_PROXY === '1' || process.env.APP_TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');

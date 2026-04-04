@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { requireAuth, requireRoles } = require('../middlewares/auth');
+const { loginLimiter, refreshLimiter } = require('../middlewares/rateLimit');
 
 const {
   authConfig,
@@ -143,7 +144,7 @@ router.get('/login', function(req, res) {
   });
 });
 
-router.post('/login', async function(req, res) {
+router.post('/login', loginLimiter, async function(req, res) {
   try {
     const username = normalizeText(req.body.username).toLowerCase();
     const password = normalizeText(req.body.password);
@@ -484,7 +485,7 @@ router.post('/first-password', requireAuth, async function(req, res) {
   }
 });
 
-router.post('/refresh', async function(req, res) {
+router.post('/refresh', refreshLimiter, async function(req, res) {
   try {
     const refreshToken = req.cookies ? req.cookies[authConfig.refreshCookieName] : null;
 

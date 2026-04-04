@@ -2,6 +2,7 @@ const express = require('express');
 
 const supabase = require('../config/supabase');
 const attendanceSessionStore = require('../utils/attendanceSessionStore');
+const { checkInLimiter } = require('../middlewares/rateLimit');
 
 const router = express.Router();
 
@@ -186,7 +187,7 @@ router.get('/', async function(req, res, next) {
   }
 });
 
-router.post('/', async function(req, res) {
+router.post('/', checkInLimiter, async function(req, res) {
   try {
     const token = normalizeText(req.body.token);
     const pin = normalizeText(req.body.pin_code);
