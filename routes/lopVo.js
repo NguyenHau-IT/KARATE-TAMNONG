@@ -1,6 +1,7 @@
 const express = require('express');
 
 const supabase = require('../config/supabase');
+const { getPublicViewErrorMessage } = require('../utils/publicError');
 
 const router = express.Router();
 
@@ -165,12 +166,12 @@ router.post('/tao', async function(req, res) {
       .single();
 
     if (error) {
-      return res.redirect(createRedirectWithMessage('/lop-vo', '', error.message));
+      return res.redirect(createRedirectWithMessage('/lop-vo', '', getPublicViewErrorMessage(error, 'Không thể tạo lớp võ lúc này')));
     }
 
     return res.redirect(buildLopVoPath(data.id, 'Tạo lớp võ thành công', ''));
   } catch (error) {
-    return res.redirect(createRedirectWithMessage('/lop-vo', '', error.message));
+    return res.redirect(createRedirectWithMessage('/lop-vo', '', getPublicViewErrorMessage(error, 'Không thể tạo lớp võ lúc này')));
   }
 });
 
@@ -185,12 +186,12 @@ router.post('/xoa/:id', async function(req, res) {
     const { error } = await supabase.from('lop_vo').delete().eq('id', id);
 
     if (error) {
-      return res.redirect(createRedirectWithMessage('/lop-vo', '', error.message));
+      return res.redirect(createRedirectWithMessage('/lop-vo', '', getPublicViewErrorMessage(error, 'Không thể xóa lớp võ lúc này')));
     }
 
     return res.redirect(createRedirectWithMessage('/lop-vo', 'Xóa lớp võ thành công', ''));
   } catch (error) {
-    return res.redirect(createRedirectWithMessage('/lop-vo', '', error.message));
+    return res.redirect(createRedirectWithMessage('/lop-vo', '', getPublicViewErrorMessage(error, 'Không thể xóa lớp võ lúc này')));
   }
 });
 
@@ -213,7 +214,7 @@ router.post('/them-vo-sinh', async function(req, res) {
       .maybeSingle();
 
     if (existingError) {
-      return res.redirect(buildLopVoPath(lopVoId, '', existingError.message));
+      return res.redirect(buildLopVoPath(lopVoId, '', getPublicViewErrorMessage(existingError, 'Không thể kiểm tra thành viên lớp lúc này')));
     }
 
     if (existing) {
@@ -229,12 +230,12 @@ router.post('/them-vo-sinh', async function(req, res) {
     });
 
     if (error) {
-      return res.redirect(buildLopVoPath(lopVoId, '', error.message));
+      return res.redirect(buildLopVoPath(lopVoId, '', getPublicViewErrorMessage(error, 'Không thể thêm võ sinh vào lớp lúc này')));
     }
 
     return res.redirect(buildLopVoPath(lopVoId, 'Thêm võ sinh vào lớp thành công', ''));
   } catch (error) {
-    return res.redirect(createRedirectWithMessage('/lop-vo', '', error.message));
+    return res.redirect(createRedirectWithMessage('/lop-vo', '', getPublicViewErrorMessage(error, 'Không thể thêm võ sinh vào lớp lúc này')));
   }
 });
 
@@ -259,12 +260,12 @@ router.post('/cap-nhat-thanh-vien/:id', async function(req, res) {
       .eq('id', relationId);
 
     if (error) {
-      return res.redirect(buildLopVoPath(lopVoId, '', error.message));
+      return res.redirect(buildLopVoPath(lopVoId, '', getPublicViewErrorMessage(error, 'Không thể cập nhật thành viên lớp lúc này')));
     }
 
     return res.redirect(buildLopVoPath(lopVoId, 'Cập nhật thành viên lớp thành công', ''));
   } catch (error) {
-    return res.redirect(createRedirectWithMessage('/lop-vo', '', error.message));
+    return res.redirect(createRedirectWithMessage('/lop-vo', '', getPublicViewErrorMessage(error, 'Không thể cập nhật thành viên lớp lúc này')));
   }
 });
 
@@ -280,12 +281,12 @@ router.post('/xoa-thanh-vien/:id', async function(req, res) {
     const { error } = await supabase.from('vo_sinh_lop').delete().eq('id', relationId);
 
     if (error) {
-      return res.redirect(buildLopVoPath(lopVoId, '', error.message));
+      return res.redirect(buildLopVoPath(lopVoId, '', getPublicViewErrorMessage(error, 'Không thể xóa thành viên khỏi lớp lúc này')));
     }
 
     return res.redirect(buildLopVoPath(lopVoId, 'Xóa thành viên khỏi lớp thành công', ''));
   } catch (error) {
-    return res.redirect(createRedirectWithMessage('/lop-vo', '', error.message));
+    return res.redirect(createRedirectWithMessage('/lop-vo', '', getPublicViewErrorMessage(error, 'Không thể xóa thành viên khỏi lớp lúc này')));
   }
 });
 

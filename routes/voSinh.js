@@ -3,6 +3,7 @@ const multer = require('multer');
 const { parse } = require('csv-parse/sync');
 
 const supabase = require('../config/supabase');
+const { getPublicApiErrorMessage, getPublicViewErrorMessage } = require('../utils/publicError');
 
 const router = express.Router();
 const upload = multer({
@@ -375,7 +376,7 @@ router.post('/import-csv', function(req, res) {
         const { error } = await supabase.from('vo_sinh').insert(chunks[index]);
 
         if (error) {
-          return res.redirect(`/vo-sinh?error=${encodeURIComponent(`Import thất bại: ${error.message}`)}`);
+          return res.redirect(`/vo-sinh?error=${encodeURIComponent(getPublicViewErrorMessage(error, 'Import thất bại, vui lòng thử lại'))}`);
         }
       }
 
@@ -389,7 +390,7 @@ router.post('/import-csv', function(req, res) {
 
       return res.redirect(`/vo-sinh?message=${encodeURIComponent(summary)}`);
     } catch (error) {
-      return res.redirect(`/vo-sinh?error=${encodeURIComponent(error.message)}`);
+      return res.redirect(`/vo-sinh?error=${encodeURIComponent(getPublicViewErrorMessage(error, 'Import CSV thất bại, vui lòng thử lại'))}`);
     }
   });
 });
@@ -424,7 +425,7 @@ router.post('/api', async function(req, res) {
       .single();
 
     if (error) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getPublicApiErrorMessage(error, 'Không thể thêm võ sinh') });
     }
 
     return res.json({
@@ -432,7 +433,7 @@ router.post('/api', async function(req, res) {
       item: data
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: getPublicApiErrorMessage(error, 'Không thể thêm võ sinh lúc này') });
   }
 });
 
@@ -474,7 +475,7 @@ router.put('/api/:id', async function(req, res) {
       .single();
 
     if (error) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getPublicApiErrorMessage(error, 'Không thể cập nhật võ sinh') });
     }
 
     return res.json({
@@ -482,7 +483,7 @@ router.put('/api/:id', async function(req, res) {
       item: data
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: getPublicApiErrorMessage(error, 'Không thể cập nhật võ sinh lúc này') });
   }
 });
 
@@ -497,7 +498,7 @@ router.delete('/api/:id', async function(req, res) {
     const { error } = await supabase.from('vo_sinh').delete().eq('id', id);
 
     if (error) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getPublicApiErrorMessage(error, 'Không thể xóa võ sinh') });
     }
 
     return res.json({
@@ -505,7 +506,7 @@ router.delete('/api/:id', async function(req, res) {
       id
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: getPublicApiErrorMessage(error, 'Không thể xóa võ sinh lúc này') });
   }
 });
 

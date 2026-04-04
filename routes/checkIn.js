@@ -3,6 +3,7 @@ const express = require('express');
 const supabase = require('../config/supabase');
 const attendanceSessionStore = require('../utils/attendanceSessionStore');
 const { checkInLimiter } = require('../middlewares/rateLimit');
+const { getPublicViewErrorMessage } = require('../utils/publicError');
 
 const router = express.Router();
 
@@ -237,7 +238,7 @@ router.post('/', checkInLimiter, async function(req, res) {
       .maybeSingle();
 
     if (buoiHocError) {
-      return res.redirect(createRedirectWithMessage('/check-in', '', buoiHocError.message));
+      return res.redirect(createRedirectWithMessage('/check-in', '', getPublicViewErrorMessage(buoiHocError, 'Không thể kiểm tra buổi học lúc này')));
     }
 
     if (!buoiHoc) {
@@ -252,7 +253,7 @@ router.post('/', checkInLimiter, async function(req, res) {
       .maybeSingle();
 
     if (relationError) {
-      return res.redirect(createRedirectWithMessage('/check-in', '', relationError.message));
+      return res.redirect(createRedirectWithMessage('/check-in', '', getPublicViewErrorMessage(relationError, 'Không thể kiểm tra liên kết võ sinh và lớp lúc này')));
     }
 
     if (!relation) {
@@ -267,7 +268,7 @@ router.post('/', checkInLimiter, async function(req, res) {
 
     return res.redirect(createRedirectWithMessage(`/check-in?buoi_hoc_id=${buoiHocId}`, 'Điểm danh thành công', ''));
   } catch (error) {
-    return res.redirect(createRedirectWithMessage('/check-in', '', error.message));
+    return res.redirect(createRedirectWithMessage('/check-in', '', getPublicViewErrorMessage(error, 'Không thể xử lý điểm danh lúc này')));
   }
 });
 

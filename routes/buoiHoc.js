@@ -2,6 +2,7 @@ const express = require('express');
 
 const supabase = require('../config/supabase');
 const attendanceSessionStore = require('../utils/attendanceSessionStore');
+const { getPublicViewErrorMessage } = require('../utils/publicError');
 
 const router = express.Router();
 
@@ -158,7 +159,7 @@ router.post('/tao', async function(req, res) {
       .maybeSingle();
 
     if (lopVoError) {
-      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', lopVoError.message));
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', getPublicViewErrorMessage(lopVoError, 'Không thể kiểm tra lớp võ lúc này')));
     }
 
     if (!lopVo) {
@@ -182,7 +183,7 @@ router.post('/tao', async function(req, res) {
     const { data: duplicateRows, error: duplicateError } = await duplicateQuery.limit(1);
 
     if (duplicateError) {
-      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', duplicateError.message));
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', getPublicViewErrorMessage(duplicateError, 'Không thể kiểm tra trùng buổi học lúc này')));
     }
 
     if (duplicateRows && duplicateRows.length) {
@@ -207,12 +208,12 @@ router.post('/tao', async function(req, res) {
       .single();
 
     if (error) {
-      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', getPublicViewErrorMessage(error, 'Không thể tạo buổi học lúc này')));
     }
 
     return res.redirect(createRedirectWithMessage('/buoi-hoc', 'Tạo buổi học thành công', ''));
   } catch (error) {
-    return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
+    return res.redirect(createRedirectWithMessage('/buoi-hoc', '', getPublicViewErrorMessage(error, 'Không thể tạo buổi học lúc này')));
   }
 });
 
@@ -227,12 +228,12 @@ router.post('/xoa/:id', async function(req, res) {
     const { error } = await supabase.from('buoi_hoc').delete().eq('id', id);
 
     if (error) {
-      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', getPublicViewErrorMessage(error, 'Không thể xóa buổi học lúc này')));
     }
 
     return res.redirect(createRedirectWithMessage('/buoi-hoc', 'Xóa buổi học thành công', ''));
   } catch (error) {
-    return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
+    return res.redirect(createRedirectWithMessage('/buoi-hoc', '', getPublicViewErrorMessage(error, 'Không thể xóa buổi học lúc này')));
   }
 });
 
@@ -252,7 +253,7 @@ router.get('/diem-danh/:id', async function(req, res) {
       .maybeSingle();
 
     if (error) {
-      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
+      return res.redirect(createRedirectWithMessage('/buoi-hoc', '', getPublicViewErrorMessage(error, 'Không thể tải dữ liệu buổi học lúc này')));
     }
 
     if (!buoiHoc) {
@@ -273,7 +274,7 @@ router.get('/diem-danh/:id', async function(req, res) {
       errorMessage: req.query.error || ''
     });
   } catch (error) {
-    return res.redirect(createRedirectWithMessage('/buoi-hoc', '', error.message));
+    return res.redirect(createRedirectWithMessage('/buoi-hoc', '', getPublicViewErrorMessage(error, 'Không thể mở phiên điểm danh lúc này')));
   }
 });
 

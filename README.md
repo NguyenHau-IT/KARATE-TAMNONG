@@ -58,6 +58,7 @@ Biến môi trường liên quan:
 - Login: tạo access token (ngắn hạn) + refresh token (dài hạn).
 - Tài khoản do admin cấp mới sẽ bị yêu cầu đổi mật khẩu lần đầu tại `/auth/first-password` trước khi vào khu vực nghiệp vụ.
 - Có áp dụng rate limit cho các endpoint nhạy cảm: `POST /auth/login`, `POST /auth/refresh`, `POST /check-in`.
+- Lỗi trả về client được chuẩn hóa theo thông điệp an toàn, không lộ chi tiết nội bộ DB/infra.
 - Mỗi lần refresh: tạo refresh token mới và revoke token cũ (rotation).
 - Nếu refresh token bị dùng lại sau khi đã rotate: toàn bộ session của tài khoản sẽ bị revoke.
 - Có màn hình quản trị phiên tại `/auth/sessions` để xem thiết bị đang đăng nhập và thu hồi từng phiên.

@@ -1,6 +1,7 @@
 const express = require('express');
 
 const supabase = require('../config/supabase');
+const { getPublicViewErrorMessage } = require('../utils/publicError');
 
 const router = express.Router();
 
@@ -351,7 +352,13 @@ router.post('/cap-nhat', async function(req, res) {
     ]);
 
     if (voSinhError || relationError) {
-      return res.redirect(createRedirectWithMessage(redirectBase, '', (voSinhError || relationError).message));
+      return res.redirect(
+        createRedirectWithMessage(
+          redirectBase,
+          '',
+          getPublicViewErrorMessage(voSinhError || relationError, 'Không thể kiểm tra dữ liệu võ sinh/lớp lúc này')
+        )
+      );
     }
 
     if (!voSinh) {
@@ -370,7 +377,13 @@ router.post('/cap-nhat', async function(req, res) {
       .maybeSingle();
 
     if (existingError) {
-      return res.redirect(createRedirectWithMessage(redirectBase, '', existingError.message));
+      return res.redirect(
+        createRedirectWithMessage(
+          redirectBase,
+          '',
+          getPublicViewErrorMessage(existingError, 'Không thể kiểm tra dữ liệu điểm danh lúc này')
+        )
+      );
     }
 
     const now = new Date().toISOString();
@@ -387,7 +400,9 @@ router.post('/cap-nhat', async function(req, res) {
         .eq('id', existing.id);
 
       if (error) {
-        return res.redirect(createRedirectWithMessage(redirectBase, '', error.message));
+        return res.redirect(
+          createRedirectWithMessage(redirectBase, '', getPublicViewErrorMessage(error, 'Không thể cập nhật điểm danh lúc này'))
+        );
       }
 
       return res.redirect(createRedirectWithMessage(redirectBase, 'Cập nhật trạng thái điểm danh thành công', ''));
@@ -405,12 +420,14 @@ router.post('/cap-nhat', async function(req, res) {
       });
 
     if (error) {
-      return res.redirect(createRedirectWithMessage(redirectBase, '', error.message));
+      return res.redirect(
+        createRedirectWithMessage(redirectBase, '', getPublicViewErrorMessage(error, 'Không thể tạo điểm danh lúc này'))
+      );
     }
 
     return res.redirect(createRedirectWithMessage(redirectBase, 'Tạo điểm danh thành công', ''));
   } catch (error) {
-    return res.redirect(createRedirectWithMessage('/diem-danh', '', error.message));
+    return res.redirect(createRedirectWithMessage('/diem-danh', '', getPublicViewErrorMessage(error, 'Không thể xử lý điểm danh lúc này')));
   }
 });
 

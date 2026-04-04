@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { requireAuth, requireRoles } = require('../middlewares/auth');
 const { loginLimiter, refreshLimiter } = require('../middlewares/rateLimit');
+const { getPublicApiErrorMessage, getPublicViewErrorMessage } = require('../utils/publicError');
 
 const {
   authConfig,
@@ -277,7 +278,7 @@ router.post('/login', loginLimiter, async function(req, res) {
       ipAddress: getRequestIp(req),
       userAgent: req.get('user-agent') || ''
     });
-    return res.redirect(createLoginRedirect('', error.message, ''));
+    return res.redirect(createLoginRedirect('', getPublicViewErrorMessage(error, 'Không thể đăng nhập lúc này'), ''));
   }
 });
 
@@ -615,7 +616,7 @@ router.post('/refresh', refreshLimiter, async function(req, res) {
       userAgent: req.get('user-agent') || ''
     });
     clearAuthCookies(res);
-    return res.status(500).json({ ok: false, message: error.message });
+    return res.status(500).json({ ok: false, message: getPublicApiErrorMessage(error, 'Không thể làm mới phiên lúc này') });
   }
 });
 
