@@ -141,3 +141,6 @@ vite.config.ts.timestamp-*
 
 # Markdown files
 *.md
+
+# SQL files
+*.sql

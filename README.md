@@ -54,6 +54,14 @@ Biến môi trường liên quan:
 5. Khởi động lại server.
 6. Đăng nhập bằng tài khoản seed ở trên và đổi mật khẩu ngay sau khi vào hệ thống.
 
+### SQL hardening theo các giai đoạn gần đây
+Khuyến nghị chạy thêm theo thứ tự:
+1. [sql/004_ma_vo_sinh_phase1.sql](sql/004_ma_vo_sinh_phase1.sql)
+2. [sql/005_tai_khoan_phase2.sql](sql/005_tai_khoan_phase2.sql)
+3. [sql/006_auth_first_password_phase21.sql](sql/006_auth_first_password_phase21.sql)
+4. [sql/007_precheck_du_lieu_de_xuat_4.sql](sql/007_precheck_du_lieu_de_xuat_4.sql) (precheck)
+5. [sql/008_khoa_rang_buoc_de_xuat_4.sql](sql/008_khoa_rang_buoc_de_xuat_4.sql)
+
 ### Flow token hiện tại
 - Login: tạo access token (ngắn hạn) + refresh token (dài hạn).
 - Tài khoản do admin cấp mới sẽ bị yêu cầu đổi mật khẩu lần đầu tại `/auth/first-password` trước khi vào khu vực nghiệp vụ.

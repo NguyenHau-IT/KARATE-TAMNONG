@@ -106,6 +106,7 @@
                           Điểm danh
                         </a>
                         <a class="btn btn-sm btn-outline-secondary" href="/diem-danh?buoi_hoc_id=<%= item.id %>">Điểm danh thủ công</a>
+                        <a class="btn btn-sm btn-outline-warning" href="/vang-mat?buoi_hoc_id=<%= item.id %>">Xem vắng mặt</a>
                         <form method="post" action="/buoi-hoc/xoa/<%= item.id %>" onsubmit="return confirm('Xóa buổi học này?');">
                           <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
                         </form>

@@ -7,15 +7,15 @@
       <h1 class="h2 mb-2">Điểm danh buổi học</h1>
       <p class="text-secondary mb-0">Chọn buổi học và thao tác điểm danh trực tiếp trên giao diện.</p>
     </div>
-    <a class="btn btn-outline-secondary" href="/diem-danh">Làm mới</a>
+    <div class="d-flex flex-wrap gap-2">
+      <% if (selectedBuoiHocId) { %>
+        <a class="btn btn-outline-warning" href="/vang-mat?buoi_hoc_id=<%= selectedBuoiHocId %>">Mở tab vắng mặt</a>
+      <% } %>
+      <a class="btn btn-outline-secondary" href="/diem-danh">Làm mới</a>
+    </div>
   </div>
 
-  <% if (message) { %>
-    <div class="alert alert-success"><%= message %></div>
-  <% } %>
-  <% if (errorMessage) { %>
-    <div class="alert alert-danger"><%= errorMessage %></div>
-  <% } %>
+  <div id="flash-data" data-message="<%= message || '' %>" data-error="<%= errorMessage || '' %>"></div>
 
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
@@ -42,7 +42,7 @@
   <% if (selectedBuoiHocId && buoiHoc) { %>
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-body">
-        <form method="get" action="/diem-danh" class="row g-3 align-items-end">
+        <form method="get" action="/diem-danh" class="row g-3 align-items-end" id="diem-danh-filter-form">
           <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId %>" />
           <div class="col-lg-5">
             <label class="form-label" for="q">Tìm theo tên / ID võ sinh</label>
@@ -74,7 +74,36 @@
           </div>
           <div class="col-lg-2 d-grid gap-2">
             <button class="btn btn-primary" type="submit">Lọc</button>
-            <a class="btn btn-outline-secondary" href="/diem-danh?buoi_hoc_id=<%= selectedBuoiHocId %>">Xóa lọc</a>
+            <a class="btn btn-outline-secondary js-clear-filters" href="/diem-danh?buoi_hoc_id=<%= selectedBuoiHocId %>">Xóa lọc</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <form method="post" action="/diem-danh/cap-nhat-nhanh" class="row g-3 align-items-end" id="bulk-update-form">
+          <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId %>" />
+          <input type="hidden" name="q" value="<%= filters && filters.q ? filters.q : '' %>" />
+          <input type="hidden" name="trang_thai" value="<%= filters && filters.trangThai ? filters.trangThai : '' %>" />
+          <input type="hidden" name="loai_vang_filter" value="<%= filters && filters.loaiVang ? filters.loaiVang : '' %>" />
+
+          <div class="col-lg-4">
+            <label class="form-label" for="bulk_action">Cập nhật nhanh theo bộ lọc hiện tại</label>
+            <select class="form-select" id="bulk_action" name="bulk_action" required>
+              <option value="all_co_mat">Đánh dấu tất cả là Có mặt</option>
+              <option value="all_vang_co_phep">Đánh dấu tất cả là Vắng có phép</option>
+              <option value="all_vang_khong_phep">Đánh dấu tất cả là Vắng không phép</option>
+            </select>
+          </div>
+
+          <div class="col-lg-6">
+            <label class="form-label" for="bulk_ly_do">Lý do (áp dụng khi chọn trạng thái vắng)</label>
+            <input class="form-control" type="text" id="bulk_ly_do" name="bulk_ly_do" maxlength="255" placeholder="Ví dụ: Nghỉ phép, bận việc gia đình" />
+          </div>
+
+          <div class="col-lg-2 d-grid">
+            <button class="btn btn-outline-primary" type="submit">Cập nhật nhanh</button>
           </div>
         </form>
       </div>
@@ -82,34 +111,37 @@
 
     <div class="row g-3 mb-4">
       <div class="col-md-2">
-        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Tổng</div><div class="h4 mb-0"><%= summary.tong_vo_sinh %></div></div></div>
+        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Tổng</div><div class="h4 mb-0" id="summary-tong"><%= summary.tong_vo_sinh %></div></div></div>
       </div>
       <div class="col-md-2">
-        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Đã điểm danh</div><div class="h4 mb-0"><%= summary.da_diem_danh %></div></div></div>
+        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Đã điểm danh</div><div class="h4 mb-0" id="summary-da-diem-danh"><%= summary.da_diem_danh %></div></div></div>
       </div>
       <div class="col-md-2">
-        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Có mặt</div><div class="h4 mb-0"><%= summary.co_mat %></div></div></div>
+        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Có mặt</div><div class="h4 mb-0" id="summary-co-mat"><%= summary.co_mat %></div></div></div>
       </div>
       <div class="col-md-2">
-        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Vắng có phép</div><div class="h4 mb-0"><%= summary.vang_co_phep %></div></div></div>
+        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Vắng có phép</div><div class="h4 mb-0" id="summary-vang-co-phep"><%= summary.vang_co_phep %></div></div></div>
       </div>
       <div class="col-md-2">
-        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Vắng không phép</div><div class="h4 mb-0"><%= summary.vang_khong_phep %></div></div></div>
+        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Vắng không phép</div><div class="h4 mb-0" id="summary-vang-khong-phep"><%= summary.vang_khong_phep %></div></div></div>
       </div>
       <div class="col-md-2">
-        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Chưa cập nhật</div><div class="h4 mb-0"><%= summary.chua_cap_nhat %></div></div></div>
+        <div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-secondary">Chưa cập nhật</div><div class="h4 mb-0" id="summary-chua-cap-nhat"><%= summary.chua_cap_nhat %></div></div></div>
       </div>
     </div>
 
     <div class="card border-0 shadow-sm">
       <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
+        <div class="small text-secondary mb-3">
+          Phím tắt: <strong>↑/↓</strong> hoặc <strong>J/K</strong> để di chuyển dòng, <strong>1</strong> Có mặt, <strong>2</strong> Vắng có phép, <strong>3</strong> Vắng không phép.
+        </div>
+        <div class="table-responsive attendance-table-wrapper">
+          <table class="table table-hover align-middle mb-0 attendance-table">
             <thead class="table-light">
               <tr>
                 <th>Võ sinh</th>
                 <th>Trạng thái hiện tại</th>
-                <th>Cập nhật</th>
+                <th>Cập nhật nhanh</th>
               </tr>
             </thead>
             <tbody>
@@ -117,61 +149,83 @@
                 <tr><td colspan="3" class="text-center text-secondary py-4">Lớp chưa có võ sinh để điểm danh.</td></tr>
               <% } %>
               <% danhSachDiemDanh.forEach(function(item) { %>
-                <tr>
+                <tr
+                  data-row="diem-danh"
+                  data-vo-sinh-id="<%= item.vo_sinh_id %>"
+                  data-current-status="<%= item.trang_thai_diem_danh || '' %>"
+                  data-current-loai-vang="<%= item.loai_vang || '' %>"
+                  data-current-ngay-cap-nhat="<%= item.ngay_cap_nhat || '' %>"
+                  tabindex="0"
+                >
                   <td>
                     <div class="fw-semibold"><%= item.ho_ten || ('#' + item.vo_sinh_id) %></div>
                     <div class="small text-secondary">ID võ sinh: <%= item.vo_sinh_id %></div>
                   </td>
-                  <td>
+                  <td data-role="status-cell">
                     <% if (!item.trang_thai_diem_danh) { %>
-                      <span class="badge text-bg-secondary">Chưa cập nhật</span>
+                      <span class="badge text-bg-secondary" data-role="status-badge">Chưa cập nhật</span>
                     <% } else if (item.trang_thai_diem_danh === 'co_mat') { %>
-                      <span class="badge text-bg-success">Có mặt</span>
+                      <span class="badge text-bg-success" data-role="status-badge">Có mặt</span>
                     <% } else if (item.loai_vang === 'co_phep') { %>
-                      <span class="badge text-bg-warning">Vắng có phép</span>
+                      <span class="badge text-bg-warning" data-role="status-badge">Vắng có phép</span>
                     <% } else { %>
-                      <span class="badge text-bg-danger">Vắng không phép</span>
+                      <span class="badge text-bg-danger" data-role="status-badge">Vắng không phép</span>
                     <% } %>
-                    <div class="small text-secondary mt-1"><%= item.ly_do || '---' %></div>
+                    <div class="small text-secondary mt-1" data-role="ly-do"><%= item.ly_do || '---' %></div>
                   </td>
                   <td>
-                    <form method="post" action="/diem-danh/cap-nhat" class="row g-2">
-                      <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId %>" />
-                      <input type="hidden" name="vo_sinh_id" value="<%= item.vo_sinh_id %>" />
-                      <input type="hidden" name="q" value="<%= filters && filters.q ? filters.q : '' %>" />
-                      <input type="hidden" name="trang_thai" value="<%= filters && filters.trangThai ? filters.trangThai : '' %>" />
-                      <input type="hidden" name="loai_vang_filter" value="<%= filters && filters.loaiVang ? filters.loaiVang : '' %>" />
+                    <div class="d-flex flex-wrap gap-2">
+                      <form method="post" action="/diem-danh/cap-nhat" class="m-0 js-status-form" data-next-status="co_mat" data-next-loai-vang="">
+                        <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId %>" />
+                        <input type="hidden" name="vo_sinh_id" value="<%= item.vo_sinh_id %>" />
+                        <input type="hidden" name="q" value="<%= filters && filters.q ? filters.q : '' %>" />
+                        <input type="hidden" name="trang_thai" value="<%= filters && filters.trangThai ? filters.trangThai : '' %>" />
+                        <input type="hidden" name="loai_vang_filter" value="<%= filters && filters.loaiVang ? filters.loaiVang : '' %>" />
+                        <input type="hidden" name="trang_thai_diem_danh" value="co_mat" />
+                        <input type="hidden" name="loai_vang" value="" />
+                        <input type="hidden" name="ly_do" value="" />
+                        <button
+                          data-hotkey="1"
+                          class="btn btn-sm <%= item.trang_thai_diem_danh === 'co_mat' ? 'btn-success' : 'btn-outline-success' %>"
+                          type="submit"
+                          title="Đánh dấu có mặt"
+                        >Có mặt</button>
+                      </form>
 
-                      <div class="col-md-4">
-                        <select class="form-select form-select-sm" name="trang_thai_diem_danh" required>
-                          <option value="co_mat" <%= item.trang_thai_diem_danh === 'co_mat' ? 'selected' : '' %>>Có mặt</option>
-                          <option value="vang" <%= item.trang_thai_diem_danh === 'vang' ? 'selected' : '' %>>Vắng</option>
-                        </select>
-                      </div>
+                      <form method="post" action="/diem-danh/cap-nhat" class="m-0 js-status-form" data-next-status="vang" data-next-loai-vang="co_phep">
+                        <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId %>" />
+                        <input type="hidden" name="vo_sinh_id" value="<%= item.vo_sinh_id %>" />
+                        <input type="hidden" name="q" value="<%= filters && filters.q ? filters.q : '' %>" />
+                        <input type="hidden" name="trang_thai" value="<%= filters && filters.trangThai ? filters.trangThai : '' %>" />
+                        <input type="hidden" name="loai_vang_filter" value="<%= filters && filters.loaiVang ? filters.loaiVang : '' %>" />
+                        <input type="hidden" name="trang_thai_diem_danh" value="vang" />
+                        <input type="hidden" name="loai_vang" value="co_phep" />
+                        <input type="hidden" name="ly_do" value="" />
+                        <button
+                          data-hotkey="2"
+                          class="btn btn-sm <%= item.trang_thai_diem_danh === 'vang' && item.loai_vang === 'co_phep' ? 'btn-warning' : 'btn-outline-warning' %>"
+                          type="submit"
+                          title="Đánh dấu vắng có phép"
+                        >Vắng có phép</button>
+                      </form>
 
-                      <div class="col-md-4">
-                        <select class="form-select form-select-sm" name="loai_vang">
-                          <option value="" <%= !item.loai_vang ? 'selected' : '' %>>Không áp dụng</option>
-                          <option value="co_phep" <%= item.loai_vang === 'co_phep' ? 'selected' : '' %>>Có phép</option>
-                          <option value="khong_phep" <%= item.loai_vang === 'khong_phep' ? 'selected' : '' %>>Không phép</option>
-                        </select>
-                      </div>
-
-                      <div class="col-md-3">
-                        <input
-                          class="form-control form-control-sm"
-                          type="text"
-                          name="ly_do"
-                          maxlength="255"
-                          placeholder="Lý do"
-                          value="<%= item.ly_do || '' %>"
-                        />
-                      </div>
-
-                      <div class="col-md-1 d-grid">
-                        <button class="btn btn-sm btn-primary" type="submit">Lưu</button>
-                      </div>
-                    </form>
+                      <form method="post" action="/diem-danh/cap-nhat" class="m-0 js-status-form" data-next-status="vang" data-next-loai-vang="khong_phep">
+                        <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId %>" />
+                        <input type="hidden" name="vo_sinh_id" value="<%= item.vo_sinh_id %>" />
+                        <input type="hidden" name="q" value="<%= filters && filters.q ? filters.q : '' %>" />
+                        <input type="hidden" name="trang_thai" value="<%= filters && filters.trangThai ? filters.trangThai : '' %>" />
+                        <input type="hidden" name="loai_vang_filter" value="<%= filters && filters.loaiVang ? filters.loaiVang : '' %>" />
+                        <input type="hidden" name="trang_thai_diem_danh" value="vang" />
+                        <input type="hidden" name="loai_vang" value="khong_phep" />
+                        <input type="hidden" name="ly_do" value="" />
+                        <button
+                          data-hotkey="3"
+                          class="btn btn-sm <%= item.trang_thai_diem_danh === 'vang' && item.loai_vang === 'khong_phep' ? 'btn-danger' : 'btn-outline-danger' %>"
+                          type="submit"
+                          title="Đánh dấu vắng không phép"
+                        >Vắng không phép</button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               <% }) %>
@@ -182,5 +236,962 @@
     </div>
   <% } %>
 </div>
+
+<script>
+  (function() {
+    var filterForm = document.getElementById('diem-danh-filter-form');
+    var bulkForm = document.getElementById('bulk-update-form');
+    var clearFilterButton = document.querySelector('.js-clear-filters');
+    var flashData = document.getElementById('flash-data');
+    var statusForms = Array.prototype.slice.call(document.querySelectorAll('.js-status-form'));
+    var tableRows = Array.prototype.slice.call(document.querySelectorAll('tr[data-row="diem-danh"]'));
+    var activeRowIndex = tableRows.length ? 0 : -1;
+    var successToastCount = 0;
+    var successToastTimer = null;
+    var pendingBulkUndo = null;
+
+    function getFilterStorageKey() {
+      if (!filterForm) {
+        return null;
+      }
+
+      var buoiHocIdInput = filterForm.querySelector('input[name="buoi_hoc_id"]');
+      var buoiHocId = buoiHocIdInput ? buoiHocIdInput.value : '';
+
+      if (!buoiHocId) {
+        return null;
+      }
+
+      return 'diemDanhFilter:' + buoiHocId;
+    }
+
+    function saveFiltersToStorage() {
+      var storageKey = getFilterStorageKey();
+
+      if (!storageKey || !filterForm) {
+        return;
+      }
+
+      var payload = {
+        q: (filterForm.querySelector('input[name="q"]') || {}).value || '',
+        trang_thai: (filterForm.querySelector('select[name="trang_thai"]') || {}).value || '',
+        loai_vang: (filterForm.querySelector('select[name="loai_vang"]') || {}).value || ''
+      };
+
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+    }
+
+    function restoreFiltersFromStorage() {
+      var storageKey = getFilterStorageKey();
+
+      if (!storageKey || !filterForm) {
+        return;
+      }
+
+      var raw = localStorage.getItem(storageKey);
+
+      if (!raw) {
+        return;
+      }
+
+      try {
+        var saved = JSON.parse(raw);
+        var qInput = filterForm.querySelector('input[name="q"]');
+        var trangThaiSelect = filterForm.querySelector('select[name="trang_thai"]');
+        var loaiVangSelect = filterForm.querySelector('select[name="loai_vang"]');
+        var hasQuery = new URLSearchParams(window.location.search).toString().includes('q=')
+          || new URLSearchParams(window.location.search).toString().includes('trang_thai=')
+          || new URLSearchParams(window.location.search).toString().includes('loai_vang=');
+
+        if (!hasQuery) {
+          if (qInput && !qInput.value && saved.q) {
+            qInput.value = saved.q;
+          }
+
+          if (trangThaiSelect && !trangThaiSelect.value && saved.trang_thai) {
+            trangThaiSelect.value = saved.trang_thai;
+          }
+
+          if (loaiVangSelect && !loaiVangSelect.value && saved.loai_vang) {
+            loaiVangSelect.value = saved.loai_vang;
+          }
+        }
+      } catch (error) {
+        localStorage.removeItem(storageKey);
+      }
+    }
+
+    function clearFiltersFromStorage() {
+      var storageKey = getFilterStorageKey();
+
+      if (!storageKey) {
+        return;
+      }
+
+      localStorage.removeItem(storageKey);
+    }
+
+    function showToast(type, text) {
+      if (!text) {
+        return;
+      }
+
+      if (window.Swal) {
+        window.Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: type,
+          title: text,
+          showConfirmButton: false,
+          timer: 2600,
+          timerProgressBar: true
+        });
+      }
+    }
+
+    function queueSuccessToast() {
+      successToastCount += 1;
+
+      if (successToastTimer) {
+        return;
+      }
+
+      successToastTimer = window.setTimeout(function() {
+        showToast('success', 'Đã cập nhật ' + successToastCount + ' võ sinh');
+        successToastCount = 0;
+        successToastTimer = null;
+      }, 900);
+    }
+
+    function clearRowActiveState() {
+      tableRows.forEach(function(row) {
+        row.classList.remove('attendance-row-active');
+      });
+    }
+
+    function focusRow(index) {
+      if (!tableRows.length) {
+        return;
+      }
+
+      var safeIndex = Math.max(0, Math.min(index, tableRows.length - 1));
+      var row = tableRows[safeIndex];
+
+      activeRowIndex = safeIndex;
+      clearRowActiveState();
+      row.classList.add('attendance-row-active');
+      row.focus({ preventScroll: true });
+      row.scrollIntoView({ block: 'nearest' });
+    }
+
+    function getHotkeyForm(row, hotkey) {
+      if (!row) {
+        return null;
+      }
+
+      var button = row.querySelector('button[data-hotkey="' + hotkey + '"]');
+
+      if (!button) {
+        return null;
+      }
+
+      return button.closest('form');
+    }
+
+    function isTypingTarget(target) {
+      if (!target) {
+        return false;
+      }
+
+      var tag = target.tagName ? target.tagName.toLowerCase() : '';
+      return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
+    }
+
+    function getBucket(status, loaiVang) {
+      if (!status) {
+        return 'chua_cap_nhat';
+      }
+
+      if (status === 'co_mat') {
+        return 'co_mat';
+      }
+
+      if (status === 'vang' && loaiVang === 'co_phep') {
+        return 'vang_co_phep';
+      }
+
+      if (status === 'vang' && loaiVang === 'khong_phep') {
+        return 'vang_khong_phep';
+      }
+
+      return 'chua_cap_nhat';
+    }
+
+    function updateSummaryUi(previousStatus, previousLoaiVang, nextStatus, nextLoaiVang) {
+      var oldBucket = getBucket(previousStatus, previousLoaiVang);
+      var newBucket = getBucket(nextStatus, nextLoaiVang);
+
+      if (oldBucket === newBucket) {
+        return;
+      }
+
+      function getSummaryValue(id) {
+        var el = document.getElementById(id);
+        return el ? Number.parseInt(el.textContent || '0', 10) || 0 : 0;
+      }
+
+      function setSummaryValue(id, value) {
+        var el = document.getElementById(id);
+
+        if (!el) {
+          return;
+        }
+
+        el.textContent = String(Math.max(0, value));
+      }
+
+      var map = {
+        chua_cap_nhat: 'summary-chua-cap-nhat',
+        co_mat: 'summary-co-mat',
+        vang_co_phep: 'summary-vang-co-phep',
+        vang_khong_phep: 'summary-vang-khong-phep'
+      };
+
+      setSummaryValue(map[oldBucket], getSummaryValue(map[oldBucket]) - 1);
+      setSummaryValue(map[newBucket], getSummaryValue(map[newBucket]) + 1);
+
+      var daDiemDanh = getSummaryValue('summary-da-diem-danh');
+
+      if (oldBucket === 'chua_cap_nhat' && newBucket !== 'chua_cap_nhat') {
+        setSummaryValue('summary-da-diem-danh', daDiemDanh + 1);
+      }
+
+      if (oldBucket !== 'chua_cap_nhat' && newBucket === 'chua_cap_nhat') {
+        setSummaryValue('summary-da-diem-danh', daDiemDanh - 1);
+      }
+    }
+
+    function updateRowBadge(row, status, loaiVang, lyDo) {
+      var badge = row.querySelector('[data-role="status-badge"]');
+      var lyDoEl = row.querySelector('[data-role="ly-do"]');
+
+      if (!badge || !lyDoEl) {
+        return;
+      }
+
+      if (!status) {
+        badge.className = 'badge text-bg-secondary';
+        badge.textContent = 'Chưa cập nhật';
+      } else if (status === 'co_mat') {
+        badge.className = 'badge text-bg-success';
+        badge.textContent = 'Có mặt';
+      } else if (loaiVang === 'co_phep') {
+        badge.className = 'badge text-bg-warning';
+        badge.textContent = 'Vắng có phép';
+      } else {
+        badge.className = 'badge text-bg-danger';
+        badge.textContent = 'Vắng không phép';
+      }
+
+      lyDoEl.textContent = lyDo || '---';
+    }
+
+    function updateRowButtons(row, status, loaiVang) {
+      row.querySelectorAll('.js-status-form').forEach(function(form) {
+        var button = form.querySelector('button[type="submit"]');
+
+        if (!button) {
+          return;
+        }
+
+        var nextStatus = form.getAttribute('data-next-status') || '';
+        var nextLoaiVang = form.getAttribute('data-next-loai-vang') || '';
+        var isActive = nextStatus === status && nextLoaiVang === (loaiVang || '');
+        var filledClass = 'btn-success';
+        var outlineClass = 'btn-outline-success';
+
+        if (nextStatus === 'vang' && nextLoaiVang === 'co_phep') {
+          filledClass = 'btn-warning';
+          outlineClass = 'btn-outline-warning';
+        }
+
+        if (nextStatus === 'vang' && nextLoaiVang === 'khong_phep') {
+          filledClass = 'btn-danger';
+          outlineClass = 'btn-outline-danger';
+        }
+
+        button.classList.remove('btn-success', 'btn-outline-success', 'btn-warning', 'btn-outline-warning', 'btn-danger', 'btn-outline-danger');
+        button.classList.add(isActive ? filledClass : outlineClass);
+      });
+    }
+
+    function setRowLoading(row, isLoading) {
+      row.querySelectorAll('.js-status-form button[type="submit"]').forEach(function(button) {
+        button.disabled = isLoading;
+      });
+
+      row.classList.toggle('attendance-row-pending', isLoading);
+    }
+
+    function setBulkLoading(isLoading) {
+      if (!bulkForm) {
+        return;
+      }
+
+      var controls = bulkForm.querySelectorAll('input, select, button');
+      controls.forEach(function(el) {
+        el.disabled = isLoading;
+      });
+    }
+
+    function applyRowState(row, status, loaiVang, lyDo, ngayCapNhat) {
+      row.setAttribute('data-current-status', status || '');
+      row.setAttribute('data-current-loai-vang', loaiVang || '');
+      row.setAttribute('data-current-ngay-cap-nhat', ngayCapNhat || '');
+      updateRowBadge(row, status || '', loaiVang || '', lyDo || '');
+      updateRowButtons(row, status || '', loaiVang || '');
+    }
+
+    async function requestAttendanceUpdate(payload, maxRetry) {
+      var attempt = 0;
+      var lastErrorMessage = 'Không thể cập nhật điểm danh lúc này';
+
+      while (attempt <= maxRetry) {
+        try {
+          var response = await fetch('/diem-danh/cap-nhat-json', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+
+          var json = null;
+
+          try {
+            json = await response.json();
+          } catch (parseError) {
+            json = null;
+          }
+
+          if (response.ok && json && json.success) {
+            return {
+              ok: true,
+              json: json
+            };
+          }
+
+          lastErrorMessage = (json && json.error) || lastErrorMessage;
+          var shouldRetry = response.status >= 500;
+
+          if (!shouldRetry || attempt >= maxRetry) {
+            return {
+              ok: false,
+              error: lastErrorMessage,
+              json: json
+            };
+          }
+        } catch (networkError) {
+          if (attempt >= maxRetry) {
+            return {
+              ok: false,
+              error: lastErrorMessage
+            };
+          }
+        }
+
+        attempt += 1;
+      }
+
+      return {
+        ok: false,
+        error: lastErrorMessage,
+        json: null
+      };
+    }
+
+    async function handleStatusFormSubmit(event) {
+      event.preventDefault();
+
+      var form = event.currentTarget;
+      var row = form.closest('tr[data-row="diem-danh"]');
+
+      if (!row) {
+        return;
+      }
+
+      var nextStatus = form.getAttribute('data-next-status') || '';
+      var nextLoaiVang = form.getAttribute('data-next-loai-vang') || '';
+      var lyDoInput = form.querySelector('input[name="ly_do"]');
+      var lyDo = '';
+
+      if (nextStatus === 'vang') {
+        if (window.Swal) {
+          var promptResult = await window.Swal.fire({
+            title: nextLoaiVang === 'co_phep' ? 'Lý do vắng có phép' : 'Lý do vắng không phép',
+            input: 'text',
+            inputPlaceholder: 'Nhập lý do (không bắt buộc)',
+            showCancelButton: true,
+            confirmButtonText: 'Xác nhận',
+            cancelButtonText: 'Hủy',
+            allowOutsideClick: false
+          });
+
+          if (!promptResult.isConfirmed) {
+            return;
+          }
+
+          lyDo = (promptResult.value || '').trim();
+        } else {
+          lyDo = (window.prompt('Nhập lý do vắng (không bắt buộc):', '') || '').trim();
+        }
+      }
+
+      if (lyDoInput) {
+        lyDoInput.value = lyDo;
+      }
+
+      var payload = {
+        buoi_hoc_id: form.querySelector('input[name="buoi_hoc_id"]').value,
+        vo_sinh_id: form.querySelector('input[name="vo_sinh_id"]').value,
+        trang_thai_diem_danh: form.querySelector('input[name="trang_thai_diem_danh"]').value,
+        loai_vang: form.querySelector('input[name="loai_vang"]').value,
+        ly_do: lyDoInput ? lyDoInput.value : ''
+      };
+
+      var previousStatus = row.getAttribute('data-current-status') || '';
+      var previousLoaiVang = row.getAttribute('data-current-loai-vang') || '';
+      var previousNgayCapNhat = row.getAttribute('data-current-ngay-cap-nhat') || '';
+      var previousLyDoEl = row.querySelector('[data-role="ly-do"]');
+      var previousLyDo = previousLyDoEl ? (previousLyDoEl.textContent === '---' ? '' : previousLyDoEl.textContent) : '';
+      var optimisticStatus = payload.trang_thai_diem_danh || '';
+      var optimisticLoaiVang = payload.loai_vang || '';
+      var optimisticLyDo = optimisticStatus === 'co_mat' ? '' : (payload.ly_do || '');
+
+      payload.expected_ngay_cap_nhat = previousNgayCapNhat || '';
+
+      try {
+        setRowLoading(row, true);
+
+        updateSummaryUi(previousStatus, previousLoaiVang, optimisticStatus, optimisticLoaiVang);
+        applyRowState(row, optimisticStatus, optimisticLoaiVang, optimisticLyDo, previousNgayCapNhat);
+
+        var result = await requestAttendanceUpdate(payload, 1);
+
+        if (!result.ok) {
+          updateSummaryUi(optimisticStatus, optimisticLoaiVang, previousStatus, previousLoaiVang);
+
+          var conflictSnapshot = result.json && result.json.code === 'attendance_conflict' && result.json.data ? result.json.data : null;
+
+          if (conflictSnapshot) {
+            var serverStatus = conflictSnapshot.trang_thai_diem_danh || '';
+            var serverLoaiVang = conflictSnapshot.loai_vang || '';
+            var serverLyDo = conflictSnapshot.ly_do || '';
+            var serverNgayCapNhat = conflictSnapshot.ngay_cap_nhat || '';
+
+            updateSummaryUi(previousStatus, previousLoaiVang, serverStatus, serverLoaiVang);
+            applyRowState(row, serverStatus, serverLoaiVang, serverLyDo, serverNgayCapNhat);
+          } else {
+            applyRowState(row, previousStatus, previousLoaiVang, previousLyDo, previousNgayCapNhat);
+          }
+
+          showToast('warning', result.error || 'Dữ liệu đã thay đổi, vui lòng kiểm tra lại trạng thái mới nhất');
+          return;
+        }
+
+        var json = result.json || {};
+        var nextStatusSaved = json.data ? (json.data.trang_thai_diem_danh || '') : optimisticStatus;
+        var nextLoaiVangSaved = json.data ? (json.data.loai_vang || '') : optimisticLoaiVang;
+        var lyDoSaved = json.data ? (json.data.ly_do || '') : optimisticLyDo;
+        var nextNgayCapNhat = json.data ? (json.data.ngay_cap_nhat || previousNgayCapNhat) : previousNgayCapNhat;
+
+        applyRowState(row, nextStatusSaved, nextLoaiVangSaved, lyDoSaved, nextNgayCapNhat);
+
+        queueSuccessToast();
+      } catch (error) {
+        updateSummaryUi(optimisticStatus, optimisticLoaiVang, previousStatus, previousLoaiVang);
+        applyRowState(row, previousStatus, previousLoaiVang, previousLyDo, previousNgayCapNhat);
+        showToast('error', 'Không thể cập nhật điểm danh lúc này');
+      } finally {
+        setRowLoading(row, false);
+      }
+    }
+
+    function recalculateSummaryFromRows() {
+      var stats = {
+        tong: tableRows.length,
+        co_mat: 0,
+        vang_co_phep: 0,
+        vang_khong_phep: 0,
+        chua_cap_nhat: 0,
+        da_diem_danh: 0
+      };
+
+      tableRows.forEach(function(row) {
+        var status = row.getAttribute('data-current-status') || '';
+        var loaiVang = row.getAttribute('data-current-loai-vang') || '';
+        var bucket = getBucket(status, loaiVang);
+
+        if (bucket === 'co_mat') {
+          stats.co_mat += 1;
+          stats.da_diem_danh += 1;
+          return;
+        }
+
+        if (bucket === 'vang_co_phep') {
+          stats.vang_co_phep += 1;
+          stats.da_diem_danh += 1;
+          return;
+        }
+
+        if (bucket === 'vang_khong_phep') {
+          stats.vang_khong_phep += 1;
+          stats.da_diem_danh += 1;
+          return;
+        }
+
+        stats.chua_cap_nhat += 1;
+      });
+
+      var summaryMap = {
+        'summary-tong': stats.tong,
+        'summary-da-diem-danh': stats.da_diem_danh,
+        'summary-co-mat': stats.co_mat,
+        'summary-vang-co-phep': stats.vang_co_phep,
+        'summary-vang-khong-phep': stats.vang_khong_phep,
+        'summary-chua-cap-nhat': stats.chua_cap_nhat
+      };
+
+      Object.keys(summaryMap).forEach(function(id) {
+        var el = document.getElementById(id);
+
+        if (!el) {
+          return;
+        }
+
+        el.textContent = String(summaryMap[id]);
+      });
+    }
+
+    function buildBulkRequestPayload() {
+      if (!bulkForm) {
+        return null;
+      }
+
+      var payload = {
+        buoi_hoc_id: (bulkForm.querySelector('input[name="buoi_hoc_id"]') || {}).value || '',
+        q: (bulkForm.querySelector('input[name="q"]') || {}).value || '',
+        trang_thai: (bulkForm.querySelector('input[name="trang_thai"]') || {}).value || '',
+        loai_vang_filter: (bulkForm.querySelector('input[name="loai_vang_filter"]') || {}).value || '',
+        bulk_action: (bulkForm.querySelector('select[name="bulk_action"]') || {}).value || '',
+        bulk_ly_do: (bulkForm.querySelector('input[name="bulk_ly_do"]') || {}).value || '',
+        target_vo_sinh_ids: [],
+        expected_versions: {}
+      };
+
+      tableRows.forEach(function(row) {
+        var voSinhId = Number.parseInt(row.getAttribute('data-vo-sinh-id') || '', 10);
+
+        if (!voSinhId) {
+          return;
+        }
+
+        payload.target_vo_sinh_ids.push(voSinhId);
+        payload.expected_versions[String(voSinhId)] = row.getAttribute('data-current-ngay-cap-nhat') || '';
+      });
+
+      return payload;
+    }
+
+    async function requestBulkUpdate(payload) {
+      var response = await fetch('/diem-danh/cap-nhat-nhanh-json', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      var json = null;
+
+      try {
+        json = await response.json();
+      } catch (error) {
+        json = null;
+      }
+
+      if (!response.ok || !json || !json.success) {
+        return {
+          ok: false,
+          error: (json && json.error) || 'Không thể cập nhật nhanh điểm danh lúc này',
+          json: json
+        };
+      }
+
+      return {
+        ok: true,
+        json: json
+      };
+    }
+
+    function applyBulkResponseToRows(json) {
+      var updatedMap = new Map();
+      var conflictMap = new Map();
+
+      (json.data && json.data.updated ? json.data.updated : []).forEach(function(item) {
+        updatedMap.set(String(item.vo_sinh_id), item);
+      });
+
+      (json.data && json.data.conflicts ? json.data.conflicts : []).forEach(function(item) {
+        conflictMap.set(String(item.vo_sinh_id), item);
+      });
+
+      tableRows.forEach(function(row) {
+        var voSinhIdKey = String(row.getAttribute('data-vo-sinh-id') || '');
+
+        if (updatedMap.has(voSinhIdKey)) {
+          var updated = updatedMap.get(voSinhIdKey);
+          applyRowState(row, updated.trang_thai_diem_danh || '', updated.loai_vang || '', updated.ly_do || '', updated.ngay_cap_nhat || '');
+          return;
+        }
+
+        if (conflictMap.has(voSinhIdKey)) {
+          var conflict = conflictMap.get(voSinhIdKey);
+          applyRowState(row, conflict.trang_thai_diem_danh || '', conflict.loai_vang || '', conflict.ly_do || '', conflict.ngay_cap_nhat || '');
+        }
+      });
+
+      return {
+        updatedCount: json.stats ? json.stats.updated : 0,
+        conflictCount: json.stats ? json.stats.conflicts : 0,
+        conflicts: json.data && json.data.conflicts ? json.data.conflicts : []
+      };
+    }
+
+    function captureRowsSnapshot() {
+      return tableRows.map(function(row) {
+        var lyDoEl = row.querySelector('[data-role="ly-do"]');
+        var lyDoText = lyDoEl ? lyDoEl.textContent : '';
+
+        return {
+          vo_sinh_id: Number.parseInt(row.getAttribute('data-vo-sinh-id') || '', 10),
+          trang_thai_diem_danh: row.getAttribute('data-current-status') || '',
+          loai_vang: row.getAttribute('data-current-loai-vang') || '',
+          ly_do: lyDoText === '---' ? '' : lyDoText,
+          ngay_cap_nhat: row.getAttribute('data-current-ngay-cap-nhat') || ''
+        };
+      }).filter(function(item) {
+        return item.vo_sinh_id;
+      });
+    }
+
+    async function performBulkUndo(snapshot, buoiHocId) {
+      if (!snapshot || !snapshot.length) {
+        return;
+      }
+
+      var rowById = new Map();
+
+      tableRows.forEach(function(row) {
+        var voSinhId = Number.parseInt(row.getAttribute('data-vo-sinh-id') || '', 10);
+
+        if (!voSinhId) {
+          return;
+        }
+
+        rowById.set(voSinhId, row);
+      });
+
+      var restoreRows = snapshot.map(function(item) {
+        var liveRow = rowById.get(item.vo_sinh_id);
+        var expectedNgayCapNhat = liveRow ? (liveRow.getAttribute('data-current-ngay-cap-nhat') || '') : '';
+
+        return {
+          vo_sinh_id: item.vo_sinh_id,
+          trang_thai_diem_danh: item.trang_thai_diem_danh,
+          loai_vang: item.loai_vang,
+          ly_do: item.ly_do,
+          expected_ngay_cap_nhat: expectedNgayCapNhat
+        };
+      });
+
+      var response = await fetch('/diem-danh/cap-nhat-restore-json', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          buoi_hoc_id: buoiHocId,
+          restore_rows: restoreRows,
+          undo_mode: 'immediate'
+        })
+      });
+
+      var json = null;
+
+      try {
+        json = await response.json();
+      } catch (error) {
+        json = null;
+      }
+
+      if (!response.ok || !json || !json.success) {
+        showToast('error', (json && json.error) || 'Không thể hoàn tác điểm danh lúc này');
+        return;
+      }
+
+      var updatedMap = new Map();
+      var conflictMap = new Map();
+
+      (json.data && json.data.updated ? json.data.updated : []).forEach(function(item) {
+        updatedMap.set(String(item.vo_sinh_id), item);
+      });
+
+      (json.data && json.data.conflicts ? json.data.conflicts : []).forEach(function(item) {
+        conflictMap.set(String(item.vo_sinh_id), item);
+      });
+
+      tableRows.forEach(function(row) {
+        var voSinhIdKey = String(row.getAttribute('data-vo-sinh-id') || '');
+
+        if (updatedMap.has(voSinhIdKey)) {
+          var updated = updatedMap.get(voSinhIdKey);
+          applyRowState(row, updated.trang_thai_diem_danh || '', updated.loai_vang || '', updated.ly_do || '', updated.ngay_cap_nhat || '');
+          return;
+        }
+
+        if (conflictMap.has(voSinhIdKey)) {
+          var conflict = conflictMap.get(voSinhIdKey);
+          applyRowState(row, conflict.trang_thai_diem_danh || '', conflict.loai_vang || '', conflict.ly_do || '', conflict.ngay_cap_nhat || '');
+        }
+      });
+
+      recalculateSummaryFromRows();
+
+      var restoredCount = json.stats ? json.stats.restored : 0;
+      var conflictCount = json.stats ? json.stats.conflicts : 0;
+
+      if (restoredCount > 0) {
+        showToast('success', 'Đã hoàn tác ' + restoredCount + ' võ sinh');
+      }
+
+      if (conflictCount > 0) {
+        showToast('warning', 'Có ' + conflictCount + ' võ sinh không thể hoàn tác do conflict');
+      }
+    }
+
+    async function offerBulkUndo(snapshot, buoiHocId, updatedCount) {
+      if (!window.Swal || !snapshot || !snapshot.length || !updatedCount) {
+        if (updatedCount > 0) {
+          showToast('success', 'Bulk cập nhật thành công ' + updatedCount + ' võ sinh');
+        }
+
+        return;
+      }
+
+      pendingBulkUndo = {
+        snapshot: snapshot,
+        buoiHocId: buoiHocId
+      };
+
+      var result = await window.Swal.fire({
+        title: 'Đã cập nhật ' + updatedCount + ' võ sinh',
+        text: 'Bạn có muốn hoàn tác trong 5 giây?',
+        icon: 'success',
+        showCancelButton: true,
+        confirmButtonText: 'Hoàn tác',
+        cancelButtonText: 'Giữ nguyên',
+        timer: 5000,
+        timerProgressBar: true
+      });
+
+      if (!pendingBulkUndo) {
+        return;
+      }
+
+      var undoPayload = pendingBulkUndo;
+      pendingBulkUndo = null;
+
+      if (!result.isConfirmed) {
+        return;
+      }
+
+      await performBulkUndo(undoPayload.snapshot, undoPayload.buoiHocId);
+    }
+
+    async function handleBulkFormSubmit(event) {
+      event.preventDefault();
+
+      var payload = buildBulkRequestPayload();
+      var snapshotBeforeBulk = captureRowsSnapshot();
+
+      if (!payload || !payload.target_vo_sinh_ids.length) {
+        showToast('warning', 'Không có võ sinh phù hợp để cập nhật');
+        return;
+      }
+
+      try {
+        setBulkLoading(true);
+
+        var firstAttempt = await requestBulkUpdate(payload);
+
+        if (!firstAttempt.ok) {
+          showToast('error', firstAttempt.error);
+          return;
+        }
+
+        var firstApplied = applyBulkResponseToRows(firstAttempt.json);
+        var updatedCount = firstApplied.updatedCount;
+        var conflictCount = firstApplied.conflictCount;
+
+        if (firstApplied.conflicts.length > 0) {
+          var retryPayload = {
+            buoi_hoc_id: payload.buoi_hoc_id,
+            bulk_action: payload.bulk_action,
+            bulk_ly_do: payload.bulk_ly_do,
+            target_vo_sinh_ids: [],
+            expected_versions: {}
+          };
+
+          firstApplied.conflicts.forEach(function(item) {
+            var voSinhId = Number.parseInt(item.vo_sinh_id, 10);
+
+            if (!voSinhId) {
+              return;
+            }
+
+            retryPayload.target_vo_sinh_ids.push(voSinhId);
+            retryPayload.expected_versions[String(voSinhId)] = item.ngay_cap_nhat || '';
+          });
+
+          if (retryPayload.target_vo_sinh_ids.length) {
+            var secondAttempt = await requestBulkUpdate(retryPayload);
+
+            if (secondAttempt.ok) {
+              var secondApplied = applyBulkResponseToRows(secondAttempt.json);
+              updatedCount += secondApplied.updatedCount;
+              conflictCount = secondApplied.conflictCount;
+            }
+          }
+        }
+
+        recalculateSummaryFromRows();
+
+        if (updatedCount > 0) {
+          await offerBulkUndo(snapshotBeforeBulk, payload.buoi_hoc_id, updatedCount);
+        }
+
+        if (conflictCount > 0) {
+          showToast('warning', 'Có ' + conflictCount + ' võ sinh bị conflict và đã đồng bộ theo dữ liệu mới nhất');
+        }
+      } catch (error) {
+        showToast('error', 'Không thể cập nhật nhanh điểm danh lúc này');
+      } finally {
+        setBulkLoading(false);
+      }
+    }
+
+    restoreFiltersFromStorage();
+
+    if (filterForm) {
+      filterForm.addEventListener('submit', saveFiltersToStorage);
+      filterForm.querySelectorAll('input, select').forEach(function(el) {
+        el.addEventListener('change', saveFiltersToStorage);
+      });
+    }
+
+    if (clearFilterButton) {
+      clearFilterButton.addEventListener('click', clearFiltersFromStorage);
+    }
+
+    statusForms.forEach(function(form) {
+      form.addEventListener('submit', handleStatusFormSubmit);
+    });
+
+    if (bulkForm) {
+      bulkForm.addEventListener('submit', handleBulkFormSubmit);
+    }
+
+    tableRows.forEach(function(row, index) {
+      row.addEventListener('click', function() {
+        focusRow(index);
+      });
+
+      row.addEventListener('focus', function() {
+        activeRowIndex = index;
+        clearRowActiveState();
+        row.classList.add('attendance-row-active');
+      });
+    });
+
+    if (tableRows.length) {
+      focusRow(0);
+    }
+
+    document.addEventListener('keydown', function(event) {
+      if (!tableRows.length || isTypingTarget(event.target)) {
+        return;
+      }
+
+      if (window.Swal && window.Swal.isVisible && window.Swal.isVisible()) {
+        return;
+      }
+
+      if (event.key === 'ArrowDown' || event.key.toLowerCase() === 'j') {
+        event.preventDefault();
+        focusRow(activeRowIndex + 1);
+        return;
+      }
+
+      if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        focusRow(activeRowIndex - 1);
+        return;
+      }
+
+      if (event.key === '1' || event.key === '2' || event.key === '3') {
+        var activeRow = tableRows[activeRowIndex];
+        var hotkeyForm = getHotkeyForm(activeRow, event.key);
+
+        if (!hotkeyForm) {
+          return;
+        }
+
+        event.preventDefault();
+        if (hotkeyForm.requestSubmit) {
+          hotkeyForm.requestSubmit();
+        } else {
+          hotkeyForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+      }
+    });
+
+    function showFlashAfterLoaded() {
+      if (!flashData) {
+        return;
+      }
+
+      var message = flashData.getAttribute('data-message') || '';
+      var errorMessage = flashData.getAttribute('data-error') || '';
+
+      if (message) {
+        showToast('success', message);
+      }
+
+      if (errorMessage) {
+        showToast('error', errorMessage);
+      }
+    }
+
+    if (document.readyState === 'complete') {
+      showFlashAfterLoaded();
+    } else {
+      window.addEventListener('load', showFlashAfterLoaded, { once: true });
+    }
+  })();
+</script>
 
 <%- include('partials/footer') %>
