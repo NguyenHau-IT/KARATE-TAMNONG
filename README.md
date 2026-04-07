@@ -72,7 +72,7 @@ Khuyến nghị chạy thêm theo thứ tự:
 - Có màn hình quản trị phiên tại `/auth/sessions` để xem thiết bị đang đăng nhập và thu hồi từng phiên.
 - Hệ thống giới hạn số phiên hoạt động tối đa mỗi tài khoản theo `AUTH_MAX_ACTIVE_SESSIONS`.
 - Ghi security audit log cho login/refresh/logout/revoke.
-- Chi tiết cơ chế bảo mật token: [AUTH_TOKEN_SECURITY.md](AUTH_TOKEN_SECURITY.md)
+- Chi tiết cơ chế bảo mật token: [docs/security/AUTH_TOKEN_SECURITY.md](docs/security/AUTH_TOKEN_SECURITY.md)
 
 ## Chạy dự án
 1. Cài Node.js LTS
@@ -81,7 +81,7 @@ Khuyến nghị chạy thêm theo thứ tự:
 4. Chạy dev: `npm run dev`
 
 ## Quy trình phát triển kèm kiểm thử (bắt buộc)
-Quy trình chi tiết đã được chuẩn hóa tại: [QUY_TRINH_DEV_TEST.md](QUY_TRINH_DEV_TEST.md)
+Quy trình chi tiết đã được chuẩn hóa tại: [docs/testing/QUY_TRINH_DEV_TEST.md](docs/testing/QUY_TRINH_DEV_TEST.md)
 
 Checklist nhanh trước commit:
 - [ ] Không lỗi runtime/lint ở phần đã sửa
@@ -90,17 +90,17 @@ Checklist nhanh trước commit:
 - [ ] Tài liệu đã đồng bộ
 
 ## Tài liệu liên quan
-- [AUTH_TOKEN_SECURITY.md](AUTH_TOKEN_SECURITY.md)
-- [DB_CONVENTION.md](DB_CONVENTION.md)
-- [DOCS_CONSOLIDATION.md](DOCS_CONSOLIDATION.md)
-- [DIEM_DANH_TRUC_TIEP_FLOW.md](DIEM_DANH_TRUC_TIEP_FLOW.md)
-- [IMPORT_CSV_VO_SINH.md](IMPORT_CSV_VO_SINH.md)
-- [MA_TRAN_DB_API_MVP.md](MA_TRAN_DB_API_MVP.md)
-- [MODULE_BUOI_HOC.md](MODULE_BUOI_HOC.md)
-- [MODULE_DIEM_DANH.md](MODULE_DIEM_DANH.md)
-- [QUY_TRINH_DEV_TEST.md](QUY_TRINH_DEV_TEST.md)
-- [RESPONSE_MAU_JSON.md](RESPONSE_MAU_JSON.md)
-- [TEST_API_KICH_BAN.md](TEST_API_KICH_BAN.md)
-- [TEST_MANUAL_AUTH_TOKEN.md](TEST_MANUAL_AUTH_TOKEN.md)
-- [TEST_MANUAL_IMPORT_CSV.md](TEST_MANUAL_IMPORT_CSV.md)
-- [TEST_MANUAL_QR_CHECKIN.md](TEST_MANUAL_QR_CHECKIN.md)
+- [docs/security/AUTH_TOKEN_SECURITY.md](docs/security/AUTH_TOKEN_SECURITY.md)
+- [docs/architecture/DB_CONVENTION.md](docs/architecture/DB_CONVENTION.md)
+- [docs/roadmap/DOCS_CONSOLIDATION.md](docs/roadmap/DOCS_CONSOLIDATION.md)
+- [docs/modules/DIEM_DANH_TRUC_TIEP_FLOW.md](docs/modules/DIEM_DANH_TRUC_TIEP_FLOW.md)
+- [docs/modules/IMPORT_CSV_VO_SINH.md](docs/modules/IMPORT_CSV_VO_SINH.md)
+- [docs/architecture/MA_TRAN_DB_API_MVP.md](docs/architecture/MA_TRAN_DB_API_MVP.md)
+- [docs/modules/MODULE_BUOI_HOC.md](docs/modules/MODULE_BUOI_HOC.md)
+- [docs/modules/MODULE_DIEM_DANH.md](docs/modules/MODULE_DIEM_DANH.md)
+- [docs/testing/QUY_TRINH_DEV_TEST.md](docs/testing/QUY_TRINH_DEV_TEST.md)
+- [docs/architecture/RESPONSE_MAU_JSON.md](docs/architecture/RESPONSE_MAU_JSON.md)
+- [tests/manual/TEST_API_KICH_BAN.md](tests/manual/TEST_API_KICH_BAN.md)
+- [tests/manual/TEST_MANUAL_AUTH_TOKEN.md](tests/manual/TEST_MANUAL_AUTH_TOKEN.md)
+- [tests/manual/TEST_MANUAL_IMPORT_CSV.md](tests/manual/TEST_MANUAL_IMPORT_CSV.md)
+- [tests/manual/TEST_MANUAL_QR_CHECKIN.md](tests/manual/TEST_MANUAL_QR_CHECKIN.md)
