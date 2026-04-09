@@ -4,8 +4,41 @@ const supabase = require('../config/supabase');
 const attendanceSessionStore = require('../utils/attendanceSessionStore');
 const { checkInLimiter } = require('../middlewares/rateLimit');
 const { getPublicViewErrorMessage } = require('../utils/publicError');
+const { logInfo, logWarn, logError } = require('../utils/appLogger');
 
 const router = express.Router();
+
+function getCheckInActorContext(req) {
+  return {
+    accountId: req.currentUser ? req.currentUser.accountId : null,
+    role: req.currentUser ? req.currentUser.role : null,
+    linkedVoSinhId: req.currentUser ? req.currentUser.linkedVoSinhId : null
+  };
+}
+
+function logCheckInEvent(req, level, action, status, meta) {
+  const payload = {
+    event: 'checkin_operation',
+    module: 'checkIn',
+    action,
+    status,
+    requestId: req.requestId || null,
+    actor: getCheckInActorContext(req),
+    meta: meta || {}
+  };
+
+  if (level === 'warn') {
+    logWarn(payload);
+    return;
+  }
+
+  if (level === 'error') {
+    logError(payload);
+    return;
+  }
+
+  logInfo(payload);
+}
 
 function parsePositiveInt(value) {
   const parsed = Number.parseInt(value, 10);
@@ -129,10 +162,17 @@ async function markAttendancePresent(buoiHocId, voSinhId, method) {
 }
 
 router.get('/', async function(req, res, next) {
+  const startedAt = Date.now();
+
   try {
     const inputToken = normalizeText(req.query.token);
     const selectedBuoiHocIdParam = parsePositiveInt(req.query.buoi_hoc_id);
     const tokenVerify = inputToken ? attendanceSessionStore.verifyToken(inputToken) : null;
+
+    logCheckInEvent(req, 'info', 'view_load', 'started', {
+      hasToken: Boolean(inputToken),
+      selectedBuoiHocIdParam
+    });
 
     const buoiHocList = await loadBuoiHocList();
 
@@ -144,6 +184,10 @@ router.get('/', async function(req, res, next) {
     }
 
     if (inputToken && (!tokenVerify || !tokenVerify.ok)) {
+      logCheckInEvent(req, 'warn', 'view_load', 'validation_failed', {
+        reason: tokenVerify ? tokenVerify.reason : 'invalid_qr_token'
+      });
+
       errorMessage = errorMessage || (tokenVerify ? tokenVerify.reason : 'QR token không hợp lệ');
     }
 
@@ -170,6 +214,13 @@ router.get('/', async function(req, res, next) {
       }
     }
 
+    logCheckInEvent(req, 'info', 'view_load', 'succeeded', {
+      selectedBuoiHocId: selectedBuoiHocId || null,
+      voSinhOptions: voSinhOptions.length,
+      tokenValid: Boolean(tokenVerify && tokenVerify.ok),
+      durationMs: Date.now() - startedAt
+    });
+
     return res.render('check-in', {
       title: 'Điểm danh võ sinh',
       activePage: 'check-in',
@@ -184,11 +235,18 @@ router.get('/', async function(req, res, next) {
       errorMessage
     });
   } catch (error) {
+    logCheckInEvent(req, 'error', 'view_load', 'failed', {
+      durationMs: Date.now() - startedAt,
+      errorCode: error.code || null
+    });
+
     return next(error);
   }
 });
 
 router.post('/', checkInLimiter, async function(req, res) {
+  const startedAt = Date.now();
+
   try {
     const token = normalizeText(req.body.token);
     const pin = normalizeText(req.body.pin_code);
@@ -197,7 +255,19 @@ router.post('/', checkInLimiter, async function(req, res) {
     const voSinhId =
       req.currentUser && req.currentUser.role === 'vo_sinh' ? req.currentUser.linkedVoSinhId : requestedVoSinhId;
 
+    logCheckInEvent(req, 'info', 'submit', 'started', {
+      hasToken: Boolean(token),
+      hasPin: Boolean(pin),
+      selectedBuoiHocId,
+      requestedVoSinhId,
+      effectiveVoSinhId: voSinhId
+    });
+
     if (!voSinhId) {
+      logCheckInEvent(req, 'warn', 'submit', 'validation_failed', {
+        reason: 'missing_vo_sinh_id'
+      });
+
       return res.redirect(createRedirectWithMessage('/check-in', '', 'Thiếu thông tin võ sinh'));
     }
 
@@ -208,6 +278,11 @@ router.post('/', checkInLimiter, async function(req, res) {
       const tokenVerify = attendanceSessionStore.verifyToken(token);
 
       if (!tokenVerify.ok) {
+        logCheckInEvent(req, 'warn', 'submit', 'validation_failed', {
+          voSinhId,
+          reason: tokenVerify.reason || 'invalid_qr_token'
+        });
+
         return res.redirect(createRedirectWithMessage('/check-in', '', tokenVerify.reason));
       }
 
@@ -215,12 +290,24 @@ router.post('/', checkInLimiter, async function(req, res) {
       method = 'checkin_qr';
     } else {
       if (!buoiHocId || !pin) {
+        logCheckInEvent(req, 'warn', 'submit', 'validation_failed', {
+          voSinhId,
+          selectedBuoiHocId,
+          reason: 'missing_buoi_hoc_or_pin'
+        });
+
         return res.redirect(createRedirectWithMessage('/check-in', '', 'Thiếu buổi học hoặc mã PIN'));
       }
 
       const pinVerify = attendanceSessionStore.verifyPin(buoiHocId, pin);
 
       if (!pinVerify.ok) {
+        logCheckInEvent(req, 'warn', 'submit', 'validation_failed', {
+          voSinhId,
+          buoiHocId,
+          reason: pinVerify.reason || 'invalid_pin'
+        });
+
         return res.redirect(createRedirectWithMessage(`/check-in?buoi_hoc_id=${buoiHocId}`, '', pinVerify.reason));
       }
 
@@ -228,6 +315,11 @@ router.post('/', checkInLimiter, async function(req, res) {
     }
 
     if (!buoiHocId) {
+      logCheckInEvent(req, 'warn', 'submit', 'validation_failed', {
+        voSinhId,
+        reason: 'missing_effective_buoi_hoc_id'
+      });
+
       return res.redirect(createRedirectWithMessage('/check-in', '', 'Không xác định được buổi học điểm danh'));
     }
 
@@ -257,17 +349,45 @@ router.post('/', checkInLimiter, async function(req, res) {
     }
 
     if (!relation) {
+      logCheckInEvent(req, 'warn', 'submit', 'failed', {
+        voSinhId,
+        buoiHocId,
+        reason: 'vo_sinh_not_in_class',
+        durationMs: Date.now() - startedAt
+      });
+
       return res.redirect(createRedirectWithMessage('/check-in', '', 'Võ sinh không thuộc lớp của buổi học'));
     }
 
     const result = await markAttendancePresent(buoiHocId, voSinhId, method);
 
     if (!result.ok) {
+      logCheckInEvent(req, 'warn', 'submit', 'failed', {
+        voSinhId,
+        buoiHocId,
+        method,
+        reason: result.reason || 'mark_attendance_failed',
+        durationMs: Date.now() - startedAt
+      });
+
       return res.redirect(createRedirectWithMessage(`/check-in?buoi_hoc_id=${buoiHocId}`, '', result.reason));
     }
 
+    logCheckInEvent(req, 'info', 'submit', 'succeeded', {
+      voSinhId,
+      buoiHocId,
+      method,
+      durationMs: Date.now() - startedAt
+    });
+
     return res.redirect(createRedirectWithMessage(`/check-in?buoi_hoc_id=${buoiHocId}`, 'Điểm danh thành công', ''));
   } catch (error) {
+    logCheckInEvent(req, 'error', 'submit', 'failed', {
+      reason: 'checkin_exception',
+      durationMs: Date.now() - startedAt,
+      errorCode: error.code || null
+    });
+
     return res.redirect(createRedirectWithMessage('/check-in', '', getPublicViewErrorMessage(error, 'Không thể xử lý điểm danh lúc này')));
   }
 });

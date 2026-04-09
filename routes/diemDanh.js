@@ -2,6 +2,7 @@ const express = require('express');
 
 const supabase = require('../config/supabase');
 const { getPublicViewErrorMessage } = require('../utils/publicError');
+const { logInfo, logWarn, logError } = require('../utils/appLogger');
 
 const router = express.Router();
 
@@ -14,6 +15,37 @@ const LOAI_VANG = {
   CO_PHEP: 'co_phep',
   KHONG_PHEP: 'khong_phep'
 };
+
+function getActorContext(req) {
+  return {
+    accountId: req.currentUser ? req.currentUser.accountId : null,
+    role: req.currentUser ? req.currentUser.role : null
+  };
+}
+
+function logAttendanceEvent(req, level, action, status, meta) {
+  const payload = {
+    event: 'attendance_operation',
+    module: 'diemDanh',
+    action,
+    status,
+    requestId: req.requestId || null,
+    actor: getActorContext(req),
+    meta: meta || {}
+  };
+
+  if (level === 'warn') {
+    logWarn(payload);
+    return;
+  }
+
+  if (level === 'error') {
+    logError(payload);
+    return;
+  }
+
+  logInfo(payload);
+}
 
 function parsePositiveInt(value) {
   const parsed = Number.parseInt(value, 10);
@@ -412,6 +444,8 @@ function buildRedirectBaseForDiemDanh(buoiHocId, filters) {
 }
 
 router.get('/', async function(req, res, next) {
+  const startedAt = Date.now();
+
   try {
     const selectedBuoiHocId = parsePositiveInt(req.query.buoi_hoc_id);
     const filters = {
@@ -419,6 +453,12 @@ router.get('/', async function(req, res, next) {
       trangThai: normalizeFilterValue(req.query.trang_thai),
       loaiVang: normalizeFilterValue(req.query.loai_vang)
     };
+
+    logAttendanceEvent(req, 'info', 'view_load', 'started', {
+      selectedBuoiHocId,
+      hasFilters: Boolean(filters.q || filters.trangThai || filters.loaiVang)
+    });
+
     const buoiHocList = await loadBuoiHocList();
 
     let buoiHoc = null;
@@ -437,6 +477,11 @@ router.get('/', async function(req, res, next) {
       buoiHoc = await getBuoiHocById(selectedBuoiHocId);
 
       if (!buoiHoc) {
+        logAttendanceEvent(req, 'warn', 'view_load', 'not_found', {
+          selectedBuoiHocId,
+          reason: 'buoi_hoc_not_found'
+        });
+
         errorMessage = errorMessage || 'Không tìm thấy buổi học';
       } else {
         const rawDanhSachDiemDanh = await loadDanhSachDiemDanh(buoiHoc);
@@ -444,6 +489,13 @@ router.get('/', async function(req, res, next) {
         danhSachDiemDanh = applyDanhSachFilters(rawDanhSachDiemDanh, filters);
       }
     }
+
+    logAttendanceEvent(req, 'info', 'view_load', 'succeeded', {
+      selectedBuoiHocId,
+      renderedRows: danhSachDiemDanh.length,
+      tongVoSinh: summary.tong_vo_sinh,
+      durationMs: Date.now() - startedAt
+    });
 
     return res.render('diem-danh', {
       title: 'Điểm danh buổi học',
@@ -458,11 +510,19 @@ router.get('/', async function(req, res, next) {
       errorMessage
     });
   } catch (error) {
+    logAttendanceEvent(req, 'error', 'view_load', 'failed', {
+      stage: 'unexpected_exception',
+      durationMs: Date.now() - startedAt,
+      errorCode: error.code || null
+    });
+
     return next(error);
   }
 });
 
 router.post('/cap-nhat', async function(req, res) {
+  const startedAt = Date.now();
+
   try {
     const buoiHocId = parsePositiveInt(req.body.buoi_hoc_id);
     const voSinhId = parsePositiveInt(req.body.vo_sinh_id);
@@ -472,7 +532,18 @@ router.post('/cap-nhat', async function(req, res) {
       loaiVang: normalizeFilterValue(req.body.loai_vang_filter)
     };
 
+    logAttendanceEvent(req, 'info', 'single_update_form', 'started', {
+      buoiHocId,
+      voSinhId
+    });
+
     if (!buoiHocId || !voSinhId) {
+      logAttendanceEvent(req, 'warn', 'single_update_form', 'validation_failed', {
+        buoiHocId,
+        voSinhId,
+        reason: 'missing_buoi_hoc_or_vo_sinh'
+      });
+
       return res.redirect(createRedirectWithMessage('/diem-danh', '', 'Thiếu thông tin buổi học hoặc võ sinh'));
     }
 
@@ -487,6 +558,12 @@ router.post('/cap-nhat', async function(req, res) {
     const errors = validateStatusPayload(payload);
 
     if (errors.length) {
+      logAttendanceEvent(req, 'warn', 'single_update_form', 'validation_failed', {
+        buoiHocId,
+        voSinhId,
+        reason: errors[0].field
+      });
+
       return res.redirect(createRedirectWithMessage(redirectBase, '', errors[0].reason));
     }
 
@@ -555,10 +632,25 @@ router.post('/cap-nhat', async function(req, res) {
         .eq('id', existing.id);
 
       if (error) {
+        logAttendanceEvent(req, 'error', 'single_update_form', 'failed', {
+          buoiHocId,
+          voSinhId,
+          stage: 'update_existing_row',
+          durationMs: Date.now() - startedAt,
+          errorCode: error.code || null
+        });
+
         return res.redirect(
           createRedirectWithMessage(redirectBase, '', getPublicViewErrorMessage(error, 'Không thể cập nhật điểm danh lúc này'))
         );
       }
+
+      logAttendanceEvent(req, 'info', 'single_update_form', 'succeeded', {
+        buoiHocId,
+        voSinhId,
+        mode: 'update',
+        durationMs: Date.now() - startedAt
+      });
 
       return res.redirect(createRedirectWithMessage(redirectBase, 'Cập nhật trạng thái điểm danh thành công', ''));
     }
@@ -575,24 +667,58 @@ router.post('/cap-nhat', async function(req, res) {
       });
 
     if (error) {
+      logAttendanceEvent(req, 'error', 'single_update_form', 'failed', {
+        buoiHocId,
+        voSinhId,
+        stage: 'insert_new_row',
+        durationMs: Date.now() - startedAt,
+        errorCode: error.code || null
+      });
+
       return res.redirect(
         createRedirectWithMessage(redirectBase, '', getPublicViewErrorMessage(error, 'Không thể tạo điểm danh lúc này'))
       );
     }
 
+    logAttendanceEvent(req, 'info', 'single_update_form', 'succeeded', {
+      buoiHocId,
+      voSinhId,
+      mode: 'insert',
+      durationMs: Date.now() - startedAt
+    });
+
     return res.redirect(createRedirectWithMessage(redirectBase, 'Tạo điểm danh thành công', ''));
   } catch (error) {
+    logAttendanceEvent(req, 'error', 'single_update_form', 'failed', {
+      stage: 'unexpected_exception',
+      durationMs: Date.now() - startedAt,
+      errorCode: error.code || null
+    });
+
     return res.redirect(createRedirectWithMessage('/diem-danh', '', getPublicViewErrorMessage(error, 'Không thể xử lý điểm danh lúc này')));
   }
 });
 
 router.post('/cap-nhat-json', async function(req, res) {
+  const startedAt = Date.now();
+
   try {
     const buoiHocId = parsePositiveInt(req.body.buoi_hoc_id);
     const voSinhId = parsePositiveInt(req.body.vo_sinh_id);
     const expectedNgayCapNhat = normalizeNullableText(req.body.expected_ngay_cap_nhat);
 
+    logAttendanceEvent(req, 'info', 'single_update', 'started', {
+      buoiHocId,
+      voSinhId
+    });
+
     if (!buoiHocId || !voSinhId) {
+      logAttendanceEvent(req, 'warn', 'single_update', 'validation_failed', {
+        buoiHocId,
+        voSinhId,
+        reason: 'missing_buoi_hoc_or_vo_sinh'
+      });
+
       return res.status(400).json({
         success: false,
         error: 'Thiếu thông tin buổi học hoặc võ sinh'
@@ -608,6 +734,12 @@ router.post('/cap-nhat-json', async function(req, res) {
     const errors = validateStatusPayload(payload);
 
     if (errors.length) {
+      logAttendanceEvent(req, 'warn', 'single_update', 'validation_failed', {
+        buoiHocId,
+        voSinhId,
+        reason: errors[0].field
+      });
+
       return res.status(400).json({
         success: false,
         error: errors[0].reason
@@ -671,6 +803,12 @@ router.post('/cap-nhat-json', async function(req, res) {
     const hasConflict = hasVersionConflict(expectedNgayCapNhat, existing ? existing.ngay_cap_nhat : null);
 
     if (hasConflict) {
+      logAttendanceEvent(req, 'warn', 'single_update', 'conflict', {
+        buoiHocId,
+        voSinhId,
+        durationMs: Date.now() - startedAt
+      });
+
       return res.status(409).json({
         success: false,
         code: 'attendance_conflict',
@@ -695,11 +833,26 @@ router.post('/cap-nhat-json', async function(req, res) {
         .eq('id', existing.id);
 
       if (error) {
+        logAttendanceEvent(req, 'error', 'single_update', 'failed', {
+          buoiHocId,
+          voSinhId,
+          stage: 'update_existing_row',
+          durationMs: Date.now() - startedAt,
+          errorCode: error.code || null
+        });
+
         return res.status(500).json({
           success: false,
           error: getPublicViewErrorMessage(error, 'Không thể cập nhật điểm danh lúc này')
         });
       }
+
+      logAttendanceEvent(req, 'info', 'single_update', 'succeeded', {
+        buoiHocId,
+        voSinhId,
+        mode: 'update',
+        durationMs: Date.now() - startedAt
+      });
 
       return res.json({
         success: true,
@@ -726,11 +879,26 @@ router.post('/cap-nhat-json', async function(req, res) {
       });
 
     if (error) {
+      logAttendanceEvent(req, 'error', 'single_update', 'failed', {
+        buoiHocId,
+        voSinhId,
+        stage: 'insert_new_row',
+        durationMs: Date.now() - startedAt,
+        errorCode: error.code || null
+      });
+
       return res.status(500).json({
         success: false,
         error: getPublicViewErrorMessage(error, 'Không thể tạo điểm danh lúc này')
       });
     }
+
+    logAttendanceEvent(req, 'info', 'single_update', 'succeeded', {
+      buoiHocId,
+      voSinhId,
+      mode: 'insert',
+      durationMs: Date.now() - startedAt
+    });
 
     return res.json({
       success: true,
@@ -744,6 +912,12 @@ router.post('/cap-nhat-json', async function(req, res) {
       }
     });
   } catch (error) {
+    logAttendanceEvent(req, 'error', 'single_update', 'failed', {
+      durationMs: Date.now() - startedAt,
+      stage: 'unexpected_exception',
+      errorCode: error.code || null
+    });
+
     return res.status(500).json({
       success: false,
       error: getPublicViewErrorMessage(error, 'Không thể xử lý điểm danh lúc này')
@@ -752,6 +926,8 @@ router.post('/cap-nhat-json', async function(req, res) {
 });
 
 router.post('/cap-nhat-nhanh-json', async function(req, res) {
+  const startedAt = Date.now();
+
   try {
     const buoiHocId = parsePositiveInt(req.body.buoi_hoc_id);
     const action = normalizeText(req.body.bulk_action);
@@ -765,7 +941,18 @@ router.post('/cap-nhat-nhanh-json', async function(req, res) {
       ? req.body.expected_versions
       : {};
 
+    logAttendanceEvent(req, 'info', 'bulk_update', 'started', {
+      buoiHocId,
+      action,
+      targetCountRequested: targetVoSinhIds.length
+    });
+
     if (!buoiHocId) {
+      logAttendanceEvent(req, 'warn', 'bulk_update', 'validation_failed', {
+        buoiHocId,
+        reason: 'missing_buoi_hoc_id'
+      });
+
       return res.status(400).json({
         success: false,
         error: 'Thiếu thông tin buổi học'
@@ -775,6 +962,12 @@ router.post('/cap-nhat-nhanh-json', async function(req, res) {
     const allowedActions = ['all_co_mat', 'all_vang_co_phep', 'all_vang_khong_phep'];
 
     if (!allowedActions.includes(action)) {
+      logAttendanceEvent(req, 'warn', 'bulk_update', 'validation_failed', {
+        buoiHocId,
+        reason: 'invalid_action',
+        action
+      });
+
       return res.status(400).json({
         success: false,
         error: 'Thao tác nhanh không hợp lệ'
@@ -816,6 +1009,12 @@ router.post('/cap-nhat-nhanh-json', async function(req, res) {
     const uniqueTargets = Array.from(new Set(targets));
 
     if (!uniqueTargets.length) {
+      logAttendanceEvent(req, 'warn', 'bulk_update', 'validation_failed', {
+        buoiHocId,
+        action,
+        reason: 'no_targets_after_filter'
+      });
+
       return res.status(400).json({
         success: false,
         error: 'Không có võ sinh phù hợp để cập nhật'
@@ -845,6 +1044,13 @@ router.post('/cap-nhat-nhanh-json', async function(req, res) {
       .in('vo_sinh_id', uniqueTargets);
 
     if (existingRowsError) {
+      logAttendanceEvent(req, 'error', 'bulk_update', 'failed', {
+        buoiHocId,
+        stage: 'load_existing_rows',
+        durationMs: Date.now() - startedAt,
+        errorCode: existingRowsError.code || null
+      });
+
       return res.status(500).json({
         success: false,
         error: getPublicViewErrorMessage(existingRowsError, 'Không thể kiểm tra dữ liệu điểm danh lúc này')
@@ -894,6 +1100,15 @@ router.post('/cap-nhat-nhanh-json', async function(req, res) {
       };
     });
 
+    logAttendanceEvent(req, 'info', 'bulk_update', 'succeeded', {
+      buoiHocId,
+      action,
+      total: uniqueTargets.length,
+      updated: updated.length,
+      conflicts: conflicts.length,
+      durationMs: Date.now() - startedAt
+    });
+
     return res.json({
       success: true,
       message: `Đã cập nhật ${updated.length}/${uniqueTargets.length} võ sinh`,
@@ -908,6 +1123,12 @@ router.post('/cap-nhat-nhanh-json', async function(req, res) {
       }
     });
   } catch (error) {
+    logAttendanceEvent(req, 'error', 'bulk_update', 'failed', {
+      stage: 'unexpected_exception',
+      durationMs: Date.now() - startedAt,
+      errorCode: error.code || null
+    });
+
     return res.status(500).json({
       success: false,
       error: getPublicViewErrorMessage(error, 'Không thể cập nhật nhanh điểm danh lúc này')
@@ -916,13 +1137,26 @@ router.post('/cap-nhat-nhanh-json', async function(req, res) {
 });
 
 router.post('/cap-nhat-restore-json', async function(req, res) {
+  const startedAt = Date.now();
+
   try {
     const buoiHocId = parsePositiveInt(req.body.buoi_hoc_id);
     const restoreRows = Array.isArray(req.body.restore_rows) ? req.body.restore_rows : [];
     const undoMode = normalizeNullableText(req.body.undo_mode);
     const skipConflictCheck = undoMode === 'immediate';
 
+    logAttendanceEvent(req, 'info', 'bulk_restore', 'started', {
+      buoiHocId,
+      restoreRowsCount: restoreRows.length,
+      undoMode: undoMode || 'default'
+    });
+
     if (!buoiHocId) {
+      logAttendanceEvent(req, 'warn', 'bulk_restore', 'validation_failed', {
+        buoiHocId,
+        reason: 'missing_buoi_hoc_id'
+      });
+
       return res.status(400).json({
         success: false,
         error: 'Thiếu thông tin buổi học'
@@ -930,6 +1164,11 @@ router.post('/cap-nhat-restore-json', async function(req, res) {
     }
 
     if (!restoreRows.length) {
+      logAttendanceEvent(req, 'warn', 'bulk_restore', 'validation_failed', {
+        buoiHocId,
+        reason: 'missing_restore_rows'
+      });
+
       return res.status(400).json({
         success: false,
         error: 'Không có dữ liệu hoàn tác'
@@ -965,6 +1204,13 @@ router.post('/cap-nhat-restore-json', async function(req, res) {
       .in('vo_sinh_id', voSinhIds);
 
     if (existingRowsError) {
+      logAttendanceEvent(req, 'error', 'bulk_restore', 'failed', {
+        buoiHocId,
+        stage: 'load_existing_rows',
+        durationMs: Date.now() - startedAt,
+        errorCode: existingRowsError.code || null
+      });
+
       return res.status(500).json({
         success: false,
         error: getPublicViewErrorMessage(existingRowsError, 'Không thể kiểm tra dữ liệu điểm danh lúc này')
@@ -1061,6 +1307,13 @@ router.post('/cap-nhat-restore-json', async function(req, res) {
         .in('vo_sinh_id', rowsToDelete);
 
       if (deleteError) {
+        logAttendanceEvent(req, 'error', 'bulk_restore', 'failed', {
+          buoiHocId,
+          stage: 'delete_rows',
+          durationMs: Date.now() - startedAt,
+          errorCode: deleteError.code || null
+        });
+
         return res.status(500).json({
           success: false,
           error: getPublicViewErrorMessage(deleteError, 'Không thể hoàn tác dữ liệu điểm danh lúc này')
@@ -1104,6 +1357,16 @@ router.post('/cap-nhat-restore-json', async function(req, res) {
       });
     });
 
+    logAttendanceEvent(req, 'info', 'bulk_restore', 'succeeded', {
+      buoiHocId,
+      total: voSinhIds.length,
+      restored: updated.length,
+      conflicts: conflicts.length,
+      invalid: invalid.length,
+      aligned: rowsAlreadyAligned.length,
+      durationMs: Date.now() - startedAt
+    });
+
     return res.json({
       success: true,
       message: `Hoàn tác ${updated.length}/${voSinhIds.length} võ sinh`,
@@ -1121,6 +1384,12 @@ router.post('/cap-nhat-restore-json', async function(req, res) {
       }
     });
   } catch (error) {
+    logAttendanceEvent(req, 'error', 'bulk_restore', 'failed', {
+      stage: 'unexpected_exception',
+      durationMs: Date.now() - startedAt,
+      errorCode: error.code || null
+    });
+
     return res.status(500).json({
       success: false,
       error: getPublicViewErrorMessage(error, 'Không thể hoàn tác điểm danh lúc này')
@@ -1129,6 +1398,8 @@ router.post('/cap-nhat-restore-json', async function(req, res) {
 });
 
 router.post('/cap-nhat-nhanh', async function(req, res) {
+  const startedAt = Date.now();
+
   try {
     const buoiHocId = parsePositiveInt(req.body.buoi_hoc_id);
     const action = normalizeText(req.body.bulk_action);
@@ -1138,7 +1409,19 @@ router.post('/cap-nhat-nhanh', async function(req, res) {
       loaiVang: normalizeFilterValue(req.body.loai_vang_filter)
     };
 
+    logAttendanceEvent(req, 'info', 'bulk_update_form', 'started', {
+      buoiHocId,
+      action,
+      hasFilters: Boolean(filters.q || filters.trangThai || filters.loaiVang)
+    });
+
     if (!buoiHocId) {
+      logAttendanceEvent(req, 'warn', 'bulk_update_form', 'validation_failed', {
+        buoiHocId,
+        action,
+        reason: 'missing_buoi_hoc_id'
+      });
+
       return res.redirect(createRedirectWithMessage('/diem-danh', '', 'Thiếu thông tin buổi học'));
     }
 
@@ -1146,6 +1429,12 @@ router.post('/cap-nhat-nhanh', async function(req, res) {
     const allowedActions = ['all_co_mat', 'all_vang_co_phep', 'all_vang_khong_phep'];
 
     if (!allowedActions.includes(action)) {
+      logAttendanceEvent(req, 'warn', 'bulk_update_form', 'validation_failed', {
+        buoiHocId,
+        action,
+        reason: 'invalid_action'
+      });
+
       return res.redirect(createRedirectWithMessage(redirectBase, '', 'Thao tác nhanh không hợp lệ'));
     }
 
@@ -1159,6 +1448,12 @@ router.post('/cap-nhat-nhanh', async function(req, res) {
     const danhSachFiltered = applyDanhSachFilters(danhSachRaw, filters);
 
     if (!danhSachFiltered.length) {
+      logAttendanceEvent(req, 'warn', 'bulk_update_form', 'validation_failed', {
+        buoiHocId,
+        action,
+        reason: 'no_targets_after_filter'
+      });
+
       return res.redirect(createRedirectWithMessage(redirectBase, '', 'Không có võ sinh phù hợp bộ lọc để cập nhật'));
     }
 
@@ -1201,6 +1496,13 @@ router.post('/cap-nhat-nhanh', async function(req, res) {
 
     await upsertAttendanceRows(rows);
 
+    logAttendanceEvent(req, 'info', 'bulk_update_form', 'succeeded', {
+      buoiHocId,
+      action,
+      updated: rows.length,
+      durationMs: Date.now() - startedAt
+    });
+
     return res.redirect(
       createRedirectWithMessage(
         redirectBase,
@@ -1209,6 +1511,12 @@ router.post('/cap-nhat-nhanh', async function(req, res) {
       )
     );
   } catch (error) {
+    logAttendanceEvent(req, 'error', 'bulk_update_form', 'failed', {
+      stage: 'unexpected_exception',
+      durationMs: Date.now() - startedAt,
+      errorCode: error.code || null
+    });
+
     return res.redirect(
       createRedirectWithMessage('/diem-danh', '', getPublicViewErrorMessage(error, 'Không thể cập nhật nhanh điểm danh lúc này'))
     );

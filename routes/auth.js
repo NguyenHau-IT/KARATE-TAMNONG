@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { requireAuth, requireRoles } = require('../middlewares/auth');
 const { loginLimiter, refreshLimiter } = require('../middlewares/rateLimit');
 const { getPublicApiErrorMessage, getPublicViewErrorMessage } = require('../utils/publicError');
+const { logInfo, logWarn, logError } = require('../utils/appLogger');
 
 const {
   authConfig,
@@ -36,6 +37,37 @@ const {
 const { logSecurityEvent } = require('../services/authAuditLogService');
 
 const router = express.Router();
+
+function getAuthActorContext(req) {
+  return {
+    accountId: req.currentUser ? req.currentUser.accountId : null,
+    role: req.currentUser ? req.currentUser.role : null
+  };
+}
+
+function logAuthEvent(req, level, action, status, meta) {
+  const payload = {
+    event: 'auth_operation',
+    module: 'auth',
+    action,
+    status,
+    requestId: req.requestId || null,
+    actor: getAuthActorContext(req),
+    meta: meta || {}
+  };
+
+  if (level === 'warn') {
+    logWarn(payload);
+    return;
+  }
+
+  if (level === 'error') {
+    logError(payload);
+    return;
+  }
+
+  logInfo(payload);
+}
 
 function normalizeText(value) {
   return (value || '').trim();
@@ -146,12 +178,24 @@ router.get('/login', function(req, res) {
 });
 
 router.post('/login', loginLimiter, async function(req, res) {
+  const startedAt = Date.now();
+
   try {
     const username = normalizeText(req.body.username).toLowerCase();
     const password = normalizeText(req.body.password);
     const nextPath = normalizeText(req.body.next);
 
+    logAuthEvent(req, 'info', 'login', 'started', {
+      username,
+      hasNextPath: Boolean(nextPath)
+    });
+
     if (!username || !password) {
+      logAuthEvent(req, 'warn', 'login', 'validation_failed', {
+        username,
+        reason: 'missing_username_or_password'
+      });
+
       await writeAuditLog({
         username,
         eventType: 'login_failed',
@@ -193,6 +237,12 @@ router.post('/login', loginLimiter, async function(req, res) {
     }
 
     if (!account) {
+      logAuthEvent(req, 'warn', 'login', 'failed', {
+        username,
+        reason: 'account_not_found',
+        durationMs: Date.now() - startedAt
+      });
+
       await writeAuditLog({
         username,
         eventType: 'login_failed',
@@ -220,6 +270,12 @@ router.post('/login', loginLimiter, async function(req, res) {
     const isValidPassword = await verifyPassword(password, account.passwordHash);
 
     if (!isValidPassword) {
+      logAuthEvent(req, 'warn', 'login', 'failed', {
+        username,
+        reason: 'invalid_password',
+        durationMs: Date.now() - startedAt
+      });
+
       await writeAuditLog({
         accountId: account.id,
         username: account.username,
@@ -235,6 +291,12 @@ router.post('/login', loginLimiter, async function(req, res) {
     const issued = await issueSessionAndCookies(req, res, account);
 
     if (!issued) {
+      logAuthEvent(req, 'error', 'login', 'failed', {
+        username,
+        reason: 'session_issue_failed',
+        durationMs: Date.now() - startedAt
+      });
+
       await writeAuditLog({
         accountId: account.id,
         username: account.username,
@@ -262,14 +324,33 @@ router.post('/login', loginLimiter, async function(req, res) {
     });
 
     if (account.mustChangePassword) {
+      logAuthEvent(req, 'info', 'login', 'succeeded', {
+        username: account.username,
+        redirect: '/auth/first-password',
+        durationMs: Date.now() - startedAt
+      });
+
       return res.redirect('/auth/first-password');
     }
 
     const defaultRedirect = getDefaultRedirectByRole(account.role);
     const safeRedirect = nextPath && nextPath.startsWith('/') ? nextPath : defaultRedirect;
 
+    logAuthEvent(req, 'info', 'login', 'succeeded', {
+      username: account.username,
+      role: account.role,
+      redirect: safeRedirect,
+      durationMs: Date.now() - startedAt
+    });
+
     return res.redirect(safeRedirect);
   } catch (error) {
+    logAuthEvent(req, 'error', 'login', 'failed', {
+      reason: 'login_exception',
+      durationMs: Date.now() - startedAt,
+      errorCode: error.code || null
+    });
+
     await writeAuditLog({
       eventType: 'login_failed',
       status: 'failed',
@@ -381,8 +462,13 @@ router.post('/sessions/revoke/:id', requireRoles(['admin', 'huan_luyen_vien']), 
 });
 
 router.post('/logout', async function(req, res) {
+  const startedAt = Date.now();
   const refreshToken = req.cookies ? req.cookies[authConfig.refreshCookieName] : null;
   let revokedSessionId = null;
+
+  logAuthEvent(req, 'info', 'logout', 'started', {
+    hasRefreshToken: Boolean(refreshToken)
+  });
 
   if (refreshToken) {
     try {
@@ -410,6 +496,11 @@ router.post('/logout', async function(req, res) {
   });
 
   clearAuthCookies(res);
+
+  logAuthEvent(req, 'info', 'logout', 'succeeded', {
+    revokedSessionId,
+    durationMs: Date.now() - startedAt
+  });
 
   return res.redirect(createLoginRedirect('Đăng xuất thành công', '', ''));
 });
@@ -487,10 +578,21 @@ router.post('/first-password', requireAuth, async function(req, res) {
 });
 
 router.post('/refresh', refreshLimiter, async function(req, res) {
+  const startedAt = Date.now();
+
   try {
     const refreshToken = req.cookies ? req.cookies[authConfig.refreshCookieName] : null;
 
+    logAuthEvent(req, 'info', 'refresh', 'started', {
+      hasRefreshToken: Boolean(refreshToken)
+    });
+
     if (!refreshToken) {
+      logAuthEvent(req, 'warn', 'refresh', 'failed', {
+        reason: 'missing_refresh_token',
+        durationMs: Date.now() - startedAt
+      });
+
       await writeAuditLog({
         accountId: req.currentUser ? req.currentUser.accountId : null,
         username: req.currentUser ? req.currentUser.username : null,
@@ -508,6 +610,11 @@ router.post('/refresh', refreshLimiter, async function(req, res) {
     const { session, error: sessionError } = await findSessionByRefreshHash(refreshHash);
 
     if (sessionError || !session) {
+      logAuthEvent(req, 'warn', 'refresh', 'failed', {
+        reason: 'refresh_token_not_found',
+        durationMs: Date.now() - startedAt
+      });
+
       await writeAuditLog({
         accountId: req.currentUser ? req.currentUser.accountId : null,
         username: req.currentUser ? req.currentUser.username : null,
@@ -522,6 +629,12 @@ router.post('/refresh', refreshLimiter, async function(req, res) {
     }
 
     if (isRevoked(session) || isExpired(session.expiresAt)) {
+      logAuthEvent(req, 'warn', 'refresh', 'failed', {
+        accountId: session.accountId,
+        reason: isRevoked(session) ? 'refresh_token_reused_or_revoked' : 'refresh_token_expired',
+        durationMs: Date.now() - startedAt
+      });
+
       await writeAuditLog({
         accountId: session.accountId,
         eventType: 'token_reuse_detected',
@@ -541,6 +654,12 @@ router.post('/refresh', refreshLimiter, async function(req, res) {
     const { account, error: accountError } = await findAccountById(session.accountId);
 
     if (accountError || !account || !account.isActive) {
+      logAuthEvent(req, 'warn', 'refresh', 'failed', {
+        accountId: session.accountId,
+        reason: 'account_invalid_or_inactive',
+        durationMs: Date.now() - startedAt
+      });
+
       await writeAuditLog({
         accountId: session.accountId,
         eventType: 'refresh_failed',
@@ -569,6 +688,12 @@ router.post('/refresh', refreshLimiter, async function(req, res) {
     });
 
     if (rotated.error || !rotated.session) {
+      logAuthEvent(req, 'error', 'refresh', 'failed', {
+        accountId: account.id,
+        reason: 'rotate_session_failed',
+        durationMs: Date.now() - startedAt
+      });
+
       await writeAuditLog({
         accountId: account.id,
         username: account.username,
@@ -603,8 +728,20 @@ router.post('/refresh', refreshLimiter, async function(req, res) {
     });
 
     setAuthCookies(res, accessToken, nextRefreshToken);
+
+    logAuthEvent(req, 'info', 'refresh', 'succeeded', {
+      accountId: account.id,
+      durationMs: Date.now() - startedAt
+    });
+
     return res.json({ ok: true, message: 'Đã làm mới phiên' });
   } catch (error) {
+    logAuthEvent(req, 'error', 'refresh', 'failed', {
+      reason: 'refresh_exception',
+      durationMs: Date.now() - startedAt,
+      errorCode: error.code || null
+    });
+
     await writeAuditLog({
       accountId: req.currentUser ? req.currentUser.accountId : null,
       username: req.currentUser ? req.currentUser.username : null,

@@ -4,6 +4,7 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var { attachCurrentUser, requireRoles } = require('./middlewares/auth');
+var { attachRequestContext } = require('./middlewares/requestContext');
 
 var indexRouter = require('./routes/index');
 var authRouter = require('./routes/auth');
@@ -15,6 +16,7 @@ var diemDanhRouter = require('./routes/diemDanh');
 var lopVoRouter = require('./routes/lopVo');
 var vangMatRouter = require('./routes/vangMat');
 var checkInRouter = require('./routes/checkIn');
+var observabilityRouter = require('./routes/observability');
 
 var app = express();
 
@@ -26,6 +28,7 @@ if (process.env.APP_TRUST_PROXY === '1' || process.env.APP_TRUST_PROXY === 'true
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
+app.use(attachRequestContext);
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -45,6 +48,7 @@ app.use('/vang-mat', requireRoles(['admin', 'huan_luyen_vien']), vangMatRouter);
 app.use('/check-in', requireRoles(['admin', 'huan_luyen_vien', 'vo_sinh']), checkInRouter);
 app.use('/check-in-pin', requireRoles(['admin', 'huan_luyen_vien', 'vo_sinh']), checkInRouter);
 app.use('/check-in-qr', requireRoles(['admin', 'huan_luyen_vien', 'vo_sinh']), checkInRouter);
+app.use('/observability', requireRoles(['admin', 'huan_luyen_vien']), observabilityRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
