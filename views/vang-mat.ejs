@@ -16,10 +16,10 @@
   </div>
 
   <% if (message) { %>
-    <div class="alert alert-success"><%= message %></div>
+    <div class="alert alert-success" role="status" aria-live="polite"><%= message %></div>
   <% } %>
   <% if (errorMessage) { %>
-    <div class="alert alert-danger"><%= errorMessage %></div>
+    <div class="alert alert-danger" role="alert" aria-live="assertive"><%= errorMessage %></div>
   <% } %>
 
   <div class="card border-0 shadow-sm mb-4">
@@ -50,11 +50,11 @@
           <input class="form-control" id="q" name="q" value="<%= filters.q || '' %>" placeholder="Ví dụ: Nguyễn Văn A" />
         </div>
         <div class="col-12 d-flex gap-2">
-          <button class="btn btn-primary" type="submit">Lọc</button>
+          <button class="btn btn-primary" type="submit" aria-label="Lọc danh sách vắng mặt">Lọc</button>
           <% if (selectedBuoiHocId) { %>
-            <a class="btn btn-outline-secondary" href="/vang-mat?buoi_hoc_id=<%= selectedBuoiHocId %>">Xóa lọc</a>
+            <a class="btn btn-outline-secondary" href="/vang-mat?buoi_hoc_id=<%= selectedBuoiHocId %>" aria-label="Xóa bộ lọc tab vắng mặt theo buổi học hiện tại">Xóa lọc</a>
           <% } else { %>
-            <a class="btn btn-outline-secondary" href="/vang-mat">Xóa lọc</a>
+            <a class="btn btn-outline-secondary" href="/vang-mat" aria-label="Xóa toàn bộ bộ lọc tab vắng mặt">Xóa lọc</a>
           <% } %>
         </div>
       </form>
@@ -78,6 +78,7 @@
       <div class="card-body">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
+            <caption class="visually-hidden">Danh sách võ sinh vắng mặt theo bộ lọc hiện tại</caption>
             <thead class="table-light">
               <tr>
                 <th>Võ sinh</th>
@@ -116,5 +117,66 @@
     </div>
   <% } %>
 </div>
+
+<script>
+  (function() {
+    var filterForm = document.querySelector('form[action="/vang-mat"][method="get"]');
+
+    if (!filterForm) {
+      return;
+    }
+
+    var keywordInput = filterForm.querySelector('input[name="q"]');
+    var loaiVangSelect = filterForm.querySelector('select[name="loai_vang"]');
+    var debounceTimer = null;
+    var FILTER_DEBOUNCE_MS = 350;
+
+    function clearDebounceTimer() {
+      if (!debounceTimer) {
+        return;
+      }
+
+      window.clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
+
+    function submitNow() {
+      clearDebounceTimer();
+
+      if (filterForm.requestSubmit) {
+        filterForm.requestSubmit();
+        return;
+      }
+
+      filterForm.submit();
+    }
+
+    function scheduleSubmit() {
+      clearDebounceTimer();
+
+      debounceTimer = window.setTimeout(function() {
+        submitNow();
+      }, FILTER_DEBOUNCE_MS);
+    }
+
+    filterForm.addEventListener('submit', clearDebounceTimer);
+
+    if (keywordInput) {
+      keywordInput.addEventListener('input', scheduleSubmit);
+      keywordInput.addEventListener('keydown', function(event) {
+        if (event.key !== 'Enter') {
+          return;
+        }
+
+        event.preventDefault();
+        submitNow();
+      });
+    }
+
+    if (loaiVangSelect) {
+      loaiVangSelect.addEventListener('change', scheduleSubmit);
+    }
+  })();
+</script>
 
 <%- include('partials/footer') %>

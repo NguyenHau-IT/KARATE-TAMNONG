@@ -16,6 +16,7 @@
   </div>
 
   <div id="flash-data" data-message="<%= message || '' %>" data-error="<%= errorMessage || '' %>"></div>
+  <div id="a11y-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
@@ -40,6 +41,30 @@
   </div>
 
   <% if (selectedBuoiHocId && buoiHoc) { %>
+    <div class="card border-0 shadow-sm mb-3 ops-status-card">
+      <div class="card-body py-2">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge text-bg-success" id="ops-health-badge">Sẵn sàng</span>
+            <span class="small text-secondary" id="ops-status-text" role="status" aria-live="polite" aria-atomic="true">Hệ thống sẵn sàng thao tác.</span>
+          </div>
+          <div class="small text-secondary d-flex flex-wrap gap-3">
+            <span>Conflict phiên này: <strong id="ops-conflict-count">0</strong></span>
+            <span>
+              Request ID gần nhất: <strong id="ops-last-request-id">---</strong>
+              <button
+                id="ops-copy-request-id"
+                type="button"
+                class="btn btn-sm btn-outline-secondary ms-1 py-0 px-2"
+                disabled
+                aria-label="Sao chép request id gần nhất"
+              >Copy</button>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card border-0 shadow-sm mb-4">
       <div class="card-body">
         <form method="get" action="/diem-danh" class="row g-3 align-items-end" id="diem-danh-filter-form">
@@ -73,8 +98,8 @@
             </select>
           </div>
           <div class="col-lg-2 d-grid gap-2">
-            <button class="btn btn-primary" type="submit">Lọc</button>
-            <a class="btn btn-outline-secondary js-clear-filters" href="/diem-danh?buoi_hoc_id=<%= selectedBuoiHocId %>">Xóa lọc</a>
+            <button class="btn btn-primary" type="submit" aria-label="Lọc danh sách điểm danh">Lọc</button>
+            <a class="btn btn-outline-secondary js-clear-filters" href="/diem-danh?buoi_hoc_id=<%= selectedBuoiHocId %>" aria-label="Xóa toàn bộ bộ lọc điểm danh">Xóa lọc</a>
           </div>
         </form>
       </div>
@@ -103,7 +128,7 @@
           </div>
 
           <div class="col-lg-2 d-grid">
-            <button class="btn btn-outline-primary" type="submit">Cập nhật nhanh</button>
+            <button class="btn btn-outline-primary" type="submit" aria-label="Cập nhật nhanh trạng thái theo bộ lọc hiện tại">Cập nhật nhanh</button>
           </div>
         </form>
       </div>
@@ -137,6 +162,7 @@
         </div>
         <div class="table-responsive attendance-table-wrapper">
           <table class="table table-hover align-middle mb-0 attendance-table">
+            <caption class="visually-hidden">Danh sách điểm danh theo võ sinh của buổi học đang chọn</caption>
             <thead class="table-light">
               <tr>
                 <th>Võ sinh</th>
@@ -187,6 +213,8 @@
                         <button
                           data-hotkey="1"
                           class="btn btn-sm <%= item.trang_thai_diem_danh === 'co_mat' ? 'btn-success' : 'btn-outline-success' %>"
+                          aria-pressed="<%= item.trang_thai_diem_danh === 'co_mat' ? 'true' : 'false' %>"
+                          aria-label="Đánh dấu <%= item.ho_ten || ('võ sinh ' + item.vo_sinh_id) %> có mặt"
                           type="submit"
                           title="Đánh dấu có mặt"
                         >Có mặt</button>
@@ -204,6 +232,8 @@
                         <button
                           data-hotkey="2"
                           class="btn btn-sm <%= item.trang_thai_diem_danh === 'vang' && item.loai_vang === 'co_phep' ? 'btn-warning' : 'btn-outline-warning' %>"
+                          aria-pressed="<%= item.trang_thai_diem_danh === 'vang' && item.loai_vang === 'co_phep' ? 'true' : 'false' %>"
+                          aria-label="Đánh dấu <%= item.ho_ten || ('võ sinh ' + item.vo_sinh_id) %> vắng có phép"
                           type="submit"
                           title="Đánh dấu vắng có phép"
                         >Vắng có phép</button>
@@ -221,6 +251,8 @@
                         <button
                           data-hotkey="3"
                           class="btn btn-sm <%= item.trang_thai_diem_danh === 'vang' && item.loai_vang === 'khong_phep' ? 'btn-danger' : 'btn-outline-danger' %>"
+                          aria-pressed="<%= item.trang_thai_diem_danh === 'vang' && item.loai_vang === 'khong_phep' ? 'true' : 'false' %>"
+                          aria-label="Đánh dấu <%= item.ho_ten || ('võ sinh ' + item.vo_sinh_id) %> vắng không phép"
                           type="submit"
                           title="Đánh dấu vắng không phép"
                         >Vắng không phép</button>
@@ -249,6 +281,112 @@
     var successToastCount = 0;
     var successToastTimer = null;
     var pendingBulkUndo = null;
+    var opsHealthBadge = document.getElementById('ops-health-badge');
+    var opsStatusText = document.getElementById('ops-status-text');
+    var opsConflictCountEl = document.getElementById('ops-conflict-count');
+    var opsLastRequestIdEl = document.getElementById('ops-last-request-id');
+    var opsCopyRequestIdButton = document.getElementById('ops-copy-request-id');
+    var a11yAnnouncer = document.getElementById('a11y-announcer');
+    var filterDebounceTimer = null;
+    var FILTER_DEBOUNCE_MS = 350;
+
+    function announceForA11y(message) {
+      if (!a11yAnnouncer || !message) {
+        return;
+      }
+
+      a11yAnnouncer.textContent = '';
+
+      window.setTimeout(function() {
+        a11yAnnouncer.textContent = message;
+      }, 10);
+    }
+
+    function getOpsLastRequestId() {
+      if (!opsLastRequestIdEl) {
+        return '';
+      }
+
+      var value = (opsLastRequestIdEl.textContent || '').trim();
+
+      if (!value || value === '---') {
+        return '';
+      }
+
+      return value;
+    }
+
+    function syncOpsCopyButtonState() {
+      if (!opsCopyRequestIdButton) {
+        return;
+      }
+
+      opsCopyRequestIdButton.disabled = !getOpsLastRequestId();
+    }
+
+    function setOpsLastRequestId(requestId) {
+      if (!opsLastRequestIdEl || !requestId) {
+        return;
+      }
+
+      opsLastRequestIdEl.textContent = requestId;
+      syncOpsCopyButtonState();
+    }
+
+    function increaseOpsConflictCount(step) {
+      if (!opsConflictCountEl) {
+        return;
+      }
+
+      var next = (Number.parseInt(opsConflictCountEl.textContent || '0', 10) || 0) + (step || 0);
+      opsConflictCountEl.textContent = String(Math.max(0, next));
+    }
+
+    function setOpsStatus(level, text, requestId) {
+      if (requestId) {
+        setOpsLastRequestId(requestId);
+      }
+
+      if (!opsHealthBadge || !opsStatusText) {
+        return;
+      }
+
+      var normalized = level || 'ok';
+      var badgeClass = 'text-bg-success';
+      var badgeText = 'Sẵn sàng';
+
+      if (normalized === 'working') {
+        badgeClass = 'text-bg-primary';
+        badgeText = 'Đang xử lý';
+      }
+
+      if (normalized === 'warning') {
+        badgeClass = 'text-bg-warning';
+        badgeText = 'Cảnh báo';
+      }
+
+      if (normalized === 'error') {
+        badgeClass = 'text-bg-danger';
+        badgeText = 'Lỗi';
+      }
+
+      opsHealthBadge.className = 'badge ' + badgeClass;
+      opsHealthBadge.textContent = badgeText;
+      opsStatusText.textContent = text || 'Hệ thống sẵn sàng thao tác.';
+      announceForA11y(opsStatusText.textContent);
+    }
+
+    function attachRequestIdMessage(message, requestId) {
+      if (!message) {
+        return requestId ? ('Mã yêu cầu: ' + requestId) : '';
+      }
+
+      if (!requestId) {
+        return message;
+      }
+
+      return message + ' (mã: ' + requestId + ')';
+    }
 
     function getFilterStorageKey() {
       if (!filterForm) {
@@ -331,10 +469,49 @@
       localStorage.removeItem(storageKey);
     }
 
+    function clearFilterDebounceTimer() {
+      if (!filterDebounceTimer) {
+        return;
+      }
+
+      window.clearTimeout(filterDebounceTimer);
+      filterDebounceTimer = null;
+    }
+
+    function submitFilterFormNow() {
+      if (!filterForm) {
+        return;
+      }
+
+      clearFilterDebounceTimer();
+      saveFiltersToStorage();
+
+      if (filterForm.requestSubmit) {
+        filterForm.requestSubmit();
+        return;
+      }
+
+      filterForm.submit();
+    }
+
+    function scheduleFilterFormSubmit() {
+      if (!filterForm) {
+        return;
+      }
+
+      clearFilterDebounceTimer();
+
+      filterDebounceTimer = window.setTimeout(function() {
+        submitFilterFormNow();
+      }, FILTER_DEBOUNCE_MS);
+    }
+
     function showToast(type, text) {
       if (!text) {
         return;
       }
+
+      announceForA11y(text);
 
       if (window.Swal) {
         window.Swal.fire({
@@ -346,6 +523,41 @@
           timer: 2600,
           timerProgressBar: true
         });
+      }
+    }
+
+    async function copyLatestRequestId() {
+      var requestId = getOpsLastRequestId();
+
+      if (!requestId) {
+        showToast('warning', 'Chưa có request ID để sao chép');
+        return;
+      }
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(requestId);
+          showToast('success', 'Đã sao chép request ID');
+          return;
+        }
+
+        var fallbackInput = document.createElement('input');
+        fallbackInput.value = requestId;
+        fallbackInput.setAttribute('readonly', 'readonly');
+        fallbackInput.style.position = 'fixed';
+        fallbackInput.style.left = '-9999px';
+        document.body.appendChild(fallbackInput);
+        fallbackInput.select();
+        var copied = document.execCommand('copy');
+        document.body.removeChild(fallbackInput);
+
+        if (!copied) {
+          throw new Error('copy_failed');
+        }
+
+        showToast('success', 'Đã sao chép request ID');
+      } catch (error) {
+        showToast('error', 'Không thể sao chép request ID lúc này');
       }
     }
 
@@ -522,6 +734,7 @@
 
         button.classList.remove('btn-success', 'btn-outline-success', 'btn-warning', 'btn-outline-warning', 'btn-danger', 'btn-outline-danger');
         button.classList.add(isActive ? filledClass : outlineClass);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
       });
     }
 
@@ -555,6 +768,7 @@
     async function requestAttendanceUpdate(payload, maxRetry) {
       var attempt = 0;
       var lastErrorMessage = 'Không thể cập nhật điểm danh lúc này';
+      var lastRequestId = '';
 
       while (attempt <= maxRetry) {
         try {
@@ -567,6 +781,8 @@
             body: JSON.stringify(payload)
           });
 
+          lastRequestId = response.headers.get('x-request-id') || lastRequestId;
+
           var json = null;
 
           try {
@@ -578,7 +794,8 @@
           if (response.ok && json && json.success) {
             return {
               ok: true,
-              json: json
+              json: json,
+              requestId: lastRequestId
             };
           }
 
@@ -589,14 +806,16 @@
             return {
               ok: false,
               error: lastErrorMessage,
-              json: json
+              json: json,
+              requestId: lastRequestId
             };
           }
         } catch (networkError) {
           if (attempt >= maxRetry) {
             return {
               ok: false,
-              error: lastErrorMessage
+              error: lastErrorMessage,
+              requestId: lastRequestId
             };
           }
         }
@@ -607,7 +826,8 @@
       return {
         ok: false,
         error: lastErrorMessage,
-        json: null
+        json: null,
+        requestId: lastRequestId
       };
     }
 
@@ -672,6 +892,7 @@
       payload.expected_ngay_cap_nhat = previousNgayCapNhat || '';
 
       try {
+        setOpsStatus('working', 'Đang gửi cập nhật điểm danh...');
         setRowLoading(row, true);
 
         updateSummaryUi(previousStatus, previousLoaiVang, optimisticStatus, optimisticLoaiVang);
@@ -692,11 +913,14 @@
 
             updateSummaryUi(previousStatus, previousLoaiVang, serverStatus, serverLoaiVang);
             applyRowState(row, serverStatus, serverLoaiVang, serverLyDo, serverNgayCapNhat);
+            increaseOpsConflictCount(1);
+            setOpsStatus('warning', 'Phát hiện conflict, đã đồng bộ lại theo dữ liệu mới nhất.', result.requestId);
           } else {
             applyRowState(row, previousStatus, previousLoaiVang, previousLyDo, previousNgayCapNhat);
+            setOpsStatus('error', 'Cập nhật thất bại, đã hoàn nguyên trạng thái trước đó.', result.requestId);
           }
 
-          showToast('warning', result.error || 'Dữ liệu đã thay đổi, vui lòng kiểm tra lại trạng thái mới nhất');
+          showToast('warning', attachRequestIdMessage(result.error || 'Dữ liệu đã thay đổi, vui lòng kiểm tra lại trạng thái mới nhất', result.requestId));
           return;
         }
 
@@ -707,11 +931,13 @@
         var nextNgayCapNhat = json.data ? (json.data.ngay_cap_nhat || previousNgayCapNhat) : previousNgayCapNhat;
 
         applyRowState(row, nextStatusSaved, nextLoaiVangSaved, lyDoSaved, nextNgayCapNhat);
+        setOpsStatus('ok', 'Cập nhật điểm danh thành công.', result.requestId);
 
         queueSuccessToast();
       } catch (error) {
         updateSummaryUi(optimisticStatus, optimisticLoaiVang, previousStatus, previousLoaiVang);
         applyRowState(row, previousStatus, previousLoaiVang, previousLyDo, previousNgayCapNhat);
+        setOpsStatus('error', 'Không thể cập nhật điểm danh lúc này.');
         showToast('error', 'Không thể cập nhật điểm danh lúc này');
       } finally {
         setRowLoading(row, false);
@@ -813,6 +1039,7 @@
         },
         body: JSON.stringify(payload)
       });
+      var requestId = response.headers.get('x-request-id') || '';
 
       var json = null;
 
@@ -826,13 +1053,15 @@
         return {
           ok: false,
           error: (json && json.error) || 'Không thể cập nhật nhanh điểm danh lúc này',
-          json: json
+          json: json,
+          requestId: requestId
         };
       }
 
       return {
         ok: true,
-        json: json
+        json: json,
+        requestId: requestId
       };
     }
 
@@ -929,6 +1158,7 @@
           undo_mode: 'immediate'
         })
       });
+      var requestId = response.headers.get('x-request-id') || '';
 
       var json = null;
 
@@ -939,6 +1169,7 @@
       }
 
       if (!response.ok || !json || !json.success) {
+        setOpsStatus('error', 'Hoàn tác thất bại.', requestId);
         showToast('error', (json && json.error) || 'Không thể hoàn tác điểm danh lúc này');
         return;
       }
@@ -975,10 +1206,13 @@
       var conflictCount = json.stats ? json.stats.conflicts : 0;
 
       if (restoredCount > 0) {
+        setOpsStatus('ok', 'Hoàn tác bulk thành công.', requestId);
         showToast('success', 'Đã hoàn tác ' + restoredCount + ' võ sinh');
       }
 
       if (conflictCount > 0) {
+        increaseOpsConflictCount(conflictCount);
+        setOpsStatus('warning', 'Hoàn tác có conflict, một số dòng được giữ theo dữ liệu mới nhất.', requestId);
         showToast('warning', 'Có ' + conflictCount + ' võ sinh không thể hoàn tác do conflict');
       }
     }
@@ -1034,12 +1268,14 @@
       }
 
       try {
+        setOpsStatus('working', 'Đang cập nhật bulk...');
         setBulkLoading(true);
 
         var firstAttempt = await requestBulkUpdate(payload);
 
         if (!firstAttempt.ok) {
-          showToast('error', firstAttempt.error);
+          setOpsStatus('error', 'Bulk update thất bại.', firstAttempt.requestId);
+          showToast('error', attachRequestIdMessage(firstAttempt.error, firstAttempt.requestId));
           return;
         }
 
@@ -1074,20 +1310,27 @@
               var secondApplied = applyBulkResponseToRows(secondAttempt.json);
               updatedCount += secondApplied.updatedCount;
               conflictCount = secondApplied.conflictCount;
+              if (secondApplied.conflictCount > 0) {
+                setOpsStatus('warning', 'Bulk retry còn conflict, đã đồng bộ theo dữ liệu mới nhất.', secondAttempt.requestId);
+              }
             }
           }
         }
 
         recalculateSummaryFromRows();
+        setOpsStatus('ok', 'Bulk update hoàn tất.', firstAttempt.requestId);
 
         if (updatedCount > 0) {
           await offerBulkUndo(snapshotBeforeBulk, payload.buoi_hoc_id, updatedCount);
         }
 
         if (conflictCount > 0) {
+          increaseOpsConflictCount(conflictCount);
+          setOpsStatus('warning', 'Bulk update có conflict, đã đồng bộ trạng thái mới nhất.', firstAttempt.requestId);
           showToast('warning', 'Có ' + conflictCount + ' võ sinh bị conflict và đã đồng bộ theo dữ liệu mới nhất');
         }
       } catch (error) {
+        setOpsStatus('error', 'Không thể cập nhật nhanh điểm danh lúc này.');
         showToast('error', 'Không thể cập nhật nhanh điểm danh lúc này');
       } finally {
         setBulkLoading(false);
@@ -1097,14 +1340,50 @@
     restoreFiltersFromStorage();
 
     if (filterForm) {
-      filterForm.addEventListener('submit', saveFiltersToStorage);
+      filterForm.addEventListener('submit', function() {
+        clearFilterDebounceTimer();
+        saveFiltersToStorage();
+      });
+
       filterForm.querySelectorAll('input, select').forEach(function(el) {
         el.addEventListener('change', saveFiltersToStorage);
       });
+
+      var filterKeywordInput = filterForm.querySelector('input[name="q"]');
+      var filterTrangThaiSelect = filterForm.querySelector('select[name="trang_thai"]');
+      var filterLoaiVangSelect = filterForm.querySelector('select[name="loai_vang"]');
+
+      if (filterKeywordInput) {
+        filterKeywordInput.addEventListener('input', scheduleFilterFormSubmit);
+        filterKeywordInput.addEventListener('keydown', function(event) {
+          if (event.key !== 'Enter') {
+            return;
+          }
+
+          event.preventDefault();
+          submitFilterFormNow();
+        });
+      }
+
+      if (filterTrangThaiSelect) {
+        filterTrangThaiSelect.addEventListener('change', scheduleFilterFormSubmit);
+      }
+
+      if (filterLoaiVangSelect) {
+        filterLoaiVangSelect.addEventListener('change', scheduleFilterFormSubmit);
+      }
     }
 
     if (clearFilterButton) {
-      clearFilterButton.addEventListener('click', clearFiltersFromStorage);
+      clearFilterButton.addEventListener('click', function() {
+        clearFilterDebounceTimer();
+        clearFiltersFromStorage();
+      });
+    }
+
+    if (opsCopyRequestIdButton) {
+      syncOpsCopyButtonState();
+      opsCopyRequestIdButton.addEventListener('click', copyLatestRequestId);
     }
 
     statusForms.forEach(function(form) {

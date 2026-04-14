@@ -93,6 +93,7 @@ Checklist nhanh trước commit:
 - [docs/security/AUTH_TOKEN_SECURITY.md](docs/security/AUTH_TOKEN_SECURITY.md)
 - [docs/architecture/DB_CONVENTION.md](docs/architecture/DB_CONVENTION.md)
 - [docs/roadmap/DOCS_CONSOLIDATION.md](docs/roadmap/DOCS_CONSOLIDATION.md)
+- [docs/roadmap/KE_HOACH_PHAT_TRIEN_TONG_THE_FE_BE.md](docs/roadmap/KE_HOACH_PHAT_TRIEN_TONG_THE_FE_BE.md)
 - [docs/modules/DIEM_DANH_TRUC_TIEP_FLOW.md](docs/modules/DIEM_DANH_TRUC_TIEP_FLOW.md)
 - [docs/modules/IMPORT_CSV_VO_SINH.md](docs/modules/IMPORT_CSV_VO_SINH.md)
 - [docs/architecture/MA_TRAN_DB_API_MVP.md](docs/architecture/MA_TRAN_DB_API_MVP.md)

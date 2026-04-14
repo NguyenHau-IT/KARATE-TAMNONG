@@ -11,10 +11,10 @@
   </div>
 
   <% if (message) { %>
-    <div class="alert alert-success"><%= message %></div>
+    <div class="alert alert-success" role="status" aria-live="polite"><%= message %></div>
   <% } %>
   <% if (errorMessage) { %>
-    <div class="alert alert-danger"><%= errorMessage %></div>
+    <div class="alert alert-danger" role="alert" aria-live="assertive"><%= errorMessage %></div>
   <% } %>
 
   <div class="card border-0 shadow-sm mb-4">
@@ -89,7 +89,7 @@
                 />
               </div>
 
-              <button class="btn btn-success" type="submit">Điểm danh</button>
+              <button class="btn btn-success" type="submit" aria-label="Xác nhận điểm danh võ sinh">Điểm danh</button>
             </form>
           </div>
         </div>

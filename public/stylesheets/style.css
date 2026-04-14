@@ -48,6 +48,14 @@ body {
   transition: opacity 0.12s ease;
 }
 
+.ops-status-card {
+  border-left: 4px solid rgba(13, 110, 253, 0.3);
+}
+
+.ops-status-card #ops-last-request-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
 .quick-link-card {
   transition: background-color 0.15s ease, transform 0.15s ease;
 }
@@ -57,8 +65,37 @@ body {
   transform: translateY(-1px);
 }
 
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role='button']:focus-visible {
+  outline: 3px solid rgba(13, 110, 253, 0.45);
+  outline-offset: 2px;
+}
+
+tr[data-row='diem-danh']:focus-visible {
+  outline: 3px solid rgba(13, 110, 253, 0.55);
+  outline-offset: -3px;
+}
+
 @media (max-width: 960px) {
   .table-responsive {
     font-size: 0.95rem;
+  }
+
+  .attendance-table-wrapper {
+    max-height: 62vh;
+  }
+
+  .attendance-table td:last-child,
+  .attendance-table th:last-child {
+    min-width: 230px;
+  }
+
+  .ops-status-card .card-body {
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
   }
 }
