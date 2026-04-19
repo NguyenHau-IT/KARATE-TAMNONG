@@ -403,6 +403,63 @@
       return 'diemDanhFilter:' + buoiHocId;
     }
 
+    function getActiveRowStorageKey() {
+      if (!filterForm) {
+        return null;
+      }
+
+      var buoiHocIdInput = filterForm.querySelector('input[name="buoi_hoc_id"]');
+      var buoiHocId = buoiHocIdInput ? buoiHocIdInput.value : '';
+
+      if (!buoiHocId) {
+        return null;
+      }
+
+      return 'diemDanhActiveRow:' + buoiHocId;
+    }
+
+    function saveActiveRowIndexToStorage(index) {
+      var storageKey = getActiveRowStorageKey();
+
+      if (!storageKey || !Number.isInteger(index) || index < 0) {
+        return;
+      }
+
+      localStorage.setItem(storageKey, String(index));
+    }
+
+    function restoreActiveRowIndexFromStorage() {
+      var storageKey = getActiveRowStorageKey();
+
+      if (!storageKey) {
+        return null;
+      }
+
+      var raw = localStorage.getItem(storageKey);
+
+      if (raw === null || raw === '') {
+        return null;
+      }
+
+      var parsed = Number.parseInt(raw, 10);
+
+      if (Number.isNaN(parsed) || parsed < 0) {
+        return null;
+      }
+
+      return parsed;
+    }
+
+    function clearActiveRowIndexFromStorage() {
+      var storageKey = getActiveRowStorageKey();
+
+      if (!storageKey) {
+        return;
+      }
+
+      localStorage.removeItem(storageKey);
+    }
+
     function saveFiltersToStorage() {
       var storageKey = getFilterStorageKey();
 
@@ -590,6 +647,7 @@
       var row = tableRows[safeIndex];
 
       activeRowIndex = safeIndex;
+      saveActiveRowIndexToStorage(safeIndex);
       clearRowActiveState();
       row.classList.add('attendance-row-active');
       row.focus({ preventScroll: true });
@@ -1378,6 +1436,7 @@
       clearFilterButton.addEventListener('click', function() {
         clearFilterDebounceTimer();
         clearFiltersFromStorage();
+        clearActiveRowIndexFromStorage();
       });
     }
 
@@ -1401,13 +1460,15 @@
 
       row.addEventListener('focus', function() {
         activeRowIndex = index;
+        saveActiveRowIndexToStorage(index);
         clearRowActiveState();
         row.classList.add('attendance-row-active');
       });
     });
 
     if (tableRows.length) {
-      focusRow(0);
+      var restoredRowIndex = restoreActiveRowIndexFromStorage();
+      focusRow(Number.isInteger(restoredRowIndex) ? restoredRowIndex : 0);
     }
 
     document.addEventListener('keydown', function(event) {

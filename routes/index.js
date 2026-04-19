@@ -106,9 +106,9 @@ router.get('/', requireRoles(['admin', 'huan_luyen_vien']), async function(req, 
           action: 'Mở tab'
         },
         {
-          title: 'Check-in PIN',
-          description: 'Võ sinh nhập mã PIN để tự điểm danh có mặt.',
-          href: '/check-in-pin',
+          title: 'Check-in QR',
+          description: 'Võ sinh quét mã QR để tự điểm danh có mặt.',
+          href: '/check-in',
           action: 'Mở màn hình'
         }
       ]

@@ -61,6 +61,7 @@ Khuyến nghị chạy thêm theo thứ tự:
 3. [sql/006_auth_first_password_phase21.sql](sql/006_auth_first_password_phase21.sql)
 4. [sql/007_precheck_du_lieu_de_xuat_4.sql](sql/007_precheck_du_lieu_de_xuat_4.sql) (precheck)
 5. [sql/008_khoa_rang_buoc_de_xuat_4.sql](sql/008_khoa_rang_buoc_de_xuat_4.sql)
+6. [sql/009_attendance_qr_session.sql](sql/009_attendance_qr_session.sql)
 
 ### Flow token hiện tại
 - Login: tạo access token (ngắn hạn) + refresh token (dài hạn).

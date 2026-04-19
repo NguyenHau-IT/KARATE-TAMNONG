@@ -1,6 +1,13 @@
 <%- include('partials/header', { title, activePage: 'buoi-hoc' }) %>
 
 <div class="container">
+  <% const emptyClassSessionCount = (buoiHocList || []).reduce(function(total, item) {
+    const memberCount = lopVoMemberCountMap && lopVoMemberCountMap[String(item.lop_vo_id)]
+      ? lopVoMemberCountMap[String(item.lop_vo_id)]
+      : 0;
+    return memberCount > 0 ? total : total + 1;
+  }, 0); %>
+
   <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
     <div>
       <p class="text-uppercase text-secondary small fw-semibold mb-1">Karate Tamnong</p>
@@ -9,6 +16,15 @@
     </div>
     <a class="btn btn-outline-secondary" href="/buoi-hoc">Làm mới danh sách</a>
   </div>
+
+  <% if (emptyClassSessionCount > 0) { %>
+    <div class="alert alert-warning d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2" role="status" aria-live="polite">
+      <div>
+        <strong>Cảnh báo vận hành:</strong> Có <strong><%= emptyClassSessionCount %></strong> buổi học thuộc lớp chưa có võ sinh.
+      </div>
+      <a class="btn btn-sm btn-outline-dark" href="/lop-vo">Mở quản lý lớp võ</a>
+    </div>
+  <% } %>
 
   <% if (message) { %>
     <div class="alert alert-success"><%= message %></div>
@@ -85,15 +101,23 @@
                 <% } %>
                 <% buoiHocList.forEach(function(item) { %>
                   <% const attendanceInfo = activeAttendanceMap ? activeAttendanceMap[item.id] : null; %>
+                  <% const memberCount = lopVoMemberCountMap && lopVoMemberCountMap[String(item.lop_vo_id)] ? lopVoMemberCountMap[String(item.lop_vo_id)] : 0; %>
                   <tr>
                     <td><%= item.id %></td>
-                    <td><%= item.lop_vo ? item.lop_vo.ten_lop : ('#' + item.lop_vo_id) %></td>
+                    <td>
+                      <div><%= item.lop_vo ? item.lop_vo.ten_lop : ('#' + item.lop_vo_id) %></div>
+                      <div class="small <%= memberCount > 0 ? 'text-secondary' : 'text-warning fw-semibold' %>">
+                        <%= memberCount %> võ sinh
+                      </div>
+                    </td>
                     <td><%= item.ngay_hoc %></td>
                     <td><%= item.gio_bat_dau || '--:--' %> - <%= item.gio_ket_thuc || '--:--' %></td>
                     <td>
+                      <% if (memberCount === 0) { %>
+                        <div class="small text-warning fw-semibold">Lớp chưa có võ sinh</div>
+                      <% } %>
                       <% if (attendanceInfo) { %>
-                        <div class="small text-success fw-semibold">Đang hoạt động</div>
-                        <div class="small text-secondary">PIN: <strong><%= attendanceInfo.pin %></strong></div>
+                        <div class="small text-success fw-semibold">Đang hoạt động (QR)</div>
                         <div class="small text-secondary">Hết hạn: <%= new Date(attendanceInfo.expiresAt).toLocaleTimeString('vi-VN') %></div>
                       <% } else { %>
                         <span class="text-secondary">Chưa mở phiên</span>
@@ -102,10 +126,19 @@
                     <td><%= item.ghi_chu || '---' %></td>
                     <td>
                       <div class="d-flex flex-wrap gap-2">
-                        <a class="btn btn-sm btn-primary" href="/buoi-hoc/diem-danh/<%= item.id %>" target="_blank" rel="noopener">
-                          Điểm danh
-                        </a>
-                        <a class="btn btn-sm btn-outline-secondary" href="/diem-danh?buoi_hoc_id=<%= item.id %>">Điểm danh thủ công</a>
+                        <% if (memberCount > 0) { %>
+                          <a class="btn btn-sm btn-primary" href="/buoi-hoc/diem-danh/<%= item.id %>" target="_blank" rel="noopener">
+                            Điểm danh
+                          </a>
+                          <a class="btn btn-sm btn-outline-secondary" href="/diem-danh?buoi_hoc_id=<%= item.id %>">Điểm danh thủ công</a>
+                        <% } else { %>
+                          <span class="btn btn-sm btn-secondary disabled" aria-disabled="true" title="Lớp chưa có võ sinh">
+                            Điểm danh
+                          </span>
+                          <span class="btn btn-sm btn-outline-secondary disabled" aria-disabled="true" title="Lớp chưa có võ sinh">
+                            Điểm danh thủ công
+                          </span>
+                        <% } %>
                         <a class="btn btn-sm btn-outline-warning" href="/vang-mat?buoi_hoc_id=<%= item.id %>">Xem vắng mặt</a>
                         <form method="post" action="/buoi-hoc/xoa/<%= item.id %>" onsubmit="return confirm('Xóa buổi học này?');">
                           <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
