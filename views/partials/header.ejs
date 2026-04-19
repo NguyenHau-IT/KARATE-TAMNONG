@@ -28,43 +28,82 @@
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="mainNavbar">
-          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-            <li class="nav-item">
-              <a class="nav-link <%= activePage === 'dashboard' ? 'active fw-semibold' : '' %>" href="/">
-                Bảng điều khiển
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <%= activePage === 'bac-dai' ? 'active fw-semibold' : '' %>" href="/bac-dai">
-                Quản lý bậc đai
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <%= activePage === 'vo-sinh' ? 'active fw-semibold' : '' %>" href="/vo-sinh">
-                Quản lý võ sinh
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <%= activePage === 'lop-vo' ? 'active fw-semibold' : '' %>" href="/lop-vo">
-                Lớp võ
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <%= activePage === 'buoi-hoc' ? 'active fw-semibold' : '' %>" href="/buoi-hoc">
-                Buổi học
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <%= activePage === 'diem-danh' ? 'active fw-semibold' : '' %>" href="/diem-danh">
-                Điểm danh
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <%= activePage === 'vang-mat' ? 'active fw-semibold' : '' %>" href="/vang-mat">
-                Vắng mặt
-              </a>
-            </li>
-          </ul>
+          <% if (currentUser) { %>
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+              <% if (currentUser.role !== 'vo_sinh') { %>
+                <li class="nav-item">
+                  <a class="nav-link <%= activePage === 'dashboard' ? 'active fw-semibold' : '' %>" href="/">
+                    Bảng điều khiển
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link <%= activePage === 'bac-dai' ? 'active fw-semibold' : '' %>" href="/bac-dai">
+                    Quản lý bậc đai
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link <%= activePage === 'vo-sinh' ? 'active fw-semibold' : '' %>" href="/vo-sinh">
+                    Quản lý võ sinh
+                  </a>
+                </li>
+                <% if (currentUser.role === 'admin') { %>
+                  <li class="nav-item">
+                    <a class="nav-link <%= activePage === 'users' ? 'active fw-semibold' : '' %>" href="/users">
+                      Tài khoản
+                    </a>
+                  </li>
+                <% } %>
+                <li class="nav-item">
+                  <a class="nav-link <%= activePage === 'lop-vo' ? 'active fw-semibold' : '' %>" href="/lop-vo">
+                    Lớp võ
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link <%= activePage === 'buoi-hoc' ? 'active fw-semibold' : '' %>" href="/buoi-hoc">
+                    Buổi học
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link <%= activePage === 'diem-danh' ? 'active fw-semibold' : '' %>" href="/diem-danh">
+                    Điểm danh
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link <%= activePage === 'vang-mat' ? 'active fw-semibold' : '' %>" href="/vang-mat">
+                    Vắng mặt
+                  </a>
+                </li>
+              <% } %>
+              <% if (currentUser.role === 'vo_sinh') { %>
+                <li class="nav-item">
+                  <a class="nav-link <%= activePage === 'check-in' ? 'active fw-semibold' : '' %>" href="/check-in">
+                    Điểm danh
+                  </a>
+                </li>
+              <% } %>
+              <% if (currentUser.role !== 'vo_sinh') { %>
+                <li class="nav-item">
+                  <a class="nav-link <%= activePage === 'auth-sessions' ? 'active fw-semibold' : '' %>" href="/auth/sessions">
+                    Thiết bị đăng nhập
+                  </a>
+                </li>
+              <% } %>
+            </ul>
+            <div class="d-flex align-items-center gap-2 ms-lg-3">
+              <span class="small text-secondary">
+                <strong><%= currentUser.username %></strong> · <%= currentUser.role %>
+              </span>
+              <form method="post" action="/auth/logout" class="m-0">
+                <button class="btn btn-sm btn-outline-danger" type="submit">Đăng xuất</button>
+              </form>
+            </div>
+          <% } else { %>
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+              <li class="nav-item">
+                <a class="nav-link" href="/auth/login">Đăng nhập</a>
+              </li>
+            </ul>
+          <% } %>
         </div>
       </div>
     </nav>

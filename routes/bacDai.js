@@ -1,6 +1,7 @@
 const express = require('express');
 
 const supabase = require('../config/supabase');
+const { getPublicApiErrorMessage } = require('../utils/publicError');
 
 const router = express.Router();
 
@@ -71,7 +72,7 @@ router.post('/api', async function(req, res) {
       .single();
 
     if (error) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getPublicApiErrorMessage(error, 'Không thể thêm bậc đai') });
     }
 
     return res.json({
@@ -79,7 +80,7 @@ router.post('/api', async function(req, res) {
       item: data
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: getPublicApiErrorMessage(error, 'Không thể thêm bậc đai lúc này') });
   }
 });
 
@@ -110,7 +111,7 @@ router.put('/api/:id', async function(req, res) {
       .single();
 
     if (error) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getPublicApiErrorMessage(error, 'Không thể cập nhật bậc đai') });
     }
 
     return res.json({
@@ -118,7 +119,7 @@ router.put('/api/:id', async function(req, res) {
       item: data
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: getPublicApiErrorMessage(error, 'Không thể cập nhật bậc đai lúc này') });
   }
 });
 
@@ -133,7 +134,7 @@ router.delete('/api/:id', async function(req, res) {
     const { error } = await supabase.from('bac_dai').delete().eq('id', id);
 
     if (error) {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ message: getPublicApiErrorMessage(error, 'Không thể xóa bậc đai') });
     }
 
     return res.json({
@@ -141,7 +142,7 @@ router.delete('/api/:id', async function(req, res) {
       id
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: getPublicApiErrorMessage(error, 'Không thể xóa bậc đai lúc này') });
   }
 });
 

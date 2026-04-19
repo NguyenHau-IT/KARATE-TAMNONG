@@ -7,7 +7,12 @@
       <h1 class="h2 mb-2">Tab vắng mặt</h1>
       <p class="text-secondary mb-0">Theo dõi danh sách võ sinh vắng có phép và không phép theo từng buổi học.</p>
     </div>
-    <a class="btn btn-outline-secondary" href="/vang-mat">Làm mới</a>
+    <div class="d-flex flex-wrap gap-2">
+      <% if (selectedBuoiHocId) { %>
+        <a class="btn btn-outline-primary" href="/diem-danh?buoi_hoc_id=<%= selectedBuoiHocId %>">Quay lại điểm danh</a>
+      <% } %>
+      <a class="btn btn-outline-secondary" href="/vang-mat">Làm mới</a>
+    </div>
   </div>
 
   <% if (message) { %>

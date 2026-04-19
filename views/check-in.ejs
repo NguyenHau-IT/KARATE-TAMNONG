@@ -1,0 +1,114 @@
+<%- include('partials/header', { title, activePage: 'check-in' }) %>
+
+<div class="container">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+      <p class="text-uppercase text-secondary small fw-semibold mb-1">Karate Tamnong</p>
+      <h1 class="h2 mb-2">Điểm danh võ sinh</h1>
+      <p class="text-secondary mb-0">Võ sinh có thể điểm danh bằng QR hoặc PIN trên cùng một màn hình.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/check-in">Làm mới</a>
+  </div>
+
+  <% if (message) { %>
+    <div class="alert alert-success"><%= message %></div>
+  <% } %>
+  <% if (errorMessage) { %>
+    <div class="alert alert-danger"><%= errorMessage %></div>
+  <% } %>
+
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <form method="get" action="/check-in" class="row g-3 align-items-end">
+        <div class="col-lg-8">
+          <label class="form-label" for="buoi_hoc_id">Chọn buổi học</label>
+          <select class="form-select" id="buoi_hoc_id" name="buoi_hoc_id">
+            <option value="">Chọn buổi học</option>
+            <% buoiHocList.forEach(function(item) { %>
+              <option value="<%= item.id %>" <%= selectedBuoiHocId === item.id ? 'selected' : '' %>>
+                #<%= item.id %> - <%= item.lop_vo ? item.lop_vo.ten_lop : ('Lớp #' + item.lop_vo_id) %> - <%= item.ngay_hoc %>
+                (<%= item.gio_bat_dau || '--:--' %> - <%= item.gio_ket_thuc || '--:--' %>)
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-lg-4 d-grid">
+          <button class="btn btn-primary" type="submit">Tải danh sách võ sinh</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <% if (selectedBuoiHoc) { %>
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Xác nhận điểm danh</h2>
+            <div class="mb-3 text-secondary small">
+              Buổi: <strong>#<%= selectedBuoiHoc.id %></strong> —
+              <strong><%= selectedBuoiHoc.lop_vo ? selectedBuoiHoc.lop_vo.ten_lop : ('Lớp #' + selectedBuoiHoc.lop_vo_id) %></strong>
+              (<%= selectedBuoiHoc.ngay_hoc %>, <%= selectedBuoiHoc.gio_bat_dau || '--:--' %> - <%= selectedBuoiHoc.gio_ket_thuc || '--:--' %>)
+            </div>
+
+            <form method="post" action="/check-in" class="vstack gap-3">
+              <input type="hidden" name="token" value="<%= token || '' %>" />
+              <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId || '' %>" />
+
+              <div>
+                <label class="form-label" for="vo_sinh_id">Võ sinh</label>
+                <% if (forceVoSinhId) { %>
+                  <% const selfOption = voSinhOptions && voSinhOptions.length ? voSinhOptions[0] : null; %>
+                  <input type="hidden" name="vo_sinh_id" value="<%= forceVoSinhId %>" />
+                  <input
+                    class="form-control"
+                    value="<%= selfOption ? (selfOption.ho_ten || ('Võ sinh #' + selfOption.vo_sinh_id)) : ('Võ sinh #' + forceVoSinhId) %>"
+                    disabled
+                  />
+                <% } else { %>
+                  <select class="form-select" id="vo_sinh_id" name="vo_sinh_id" required>
+                    <option value="">Chọn võ sinh</option>
+                    <% voSinhOptions.forEach(function(item) { %>
+                      <option value="<%= item.vo_sinh_id %>"><%= item.ho_ten || ('Võ sinh #' + item.vo_sinh_id) %> (#<%= item.vo_sinh_id %>)</option>
+                    <% }) %>
+                  </select>
+                <% } %>
+              </div>
+
+              <div>
+                <label class="form-label" for="pin_code">Mã PIN (nếu không dùng QR)</label>
+                <input
+                  class="form-control"
+                  id="pin_code"
+                  name="pin_code"
+                  maxlength="4"
+                  pattern="\d{4}"
+                  inputmode="numeric"
+                  placeholder="Nhập mã PIN 4 số"
+                  <%= token ? 'disabled' : '' %>
+                />
+              </div>
+
+              <button class="btn btn-success" type="submit">Điểm danh</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Cách dùng</h2>
+            <ol class="mb-0 text-secondary">
+              <li>Nếu quét QR, hệ thống tự nhận buổi học qua token.</li>
+              <li>Nếu nhập PIN, chọn đúng buổi học rồi nhập mã 4 số.</li>
+              <li>Đến trễ/không kịp tự điểm danh sẽ do HLV xử lý ở màn hình điểm danh thủ công.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

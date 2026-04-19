@@ -1,0 +1,110 @@
+<%- include('partials/header', { title, activePage: 'buoi-hoc' }) %>
+
+<div class="container">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+      <p class="text-uppercase text-secondary small fw-semibold mb-1">Buổi học #<%= buoiHoc.id %></p>
+      <h1 class="h2 mb-2">Điểm danh trực tiếp (QR + PIN)</h1>
+      <p class="text-secondary mb-0">
+        <strong><%= buoiHoc.lop_vo ? buoiHoc.lop_vo.ten_lop : ('Lớp #' + buoiHoc.lop_vo_id) %></strong>
+        — <%= buoiHoc.ngay_hoc %> (<%= buoiHoc.gio_bat_dau || '--:--' %> - <%= buoiHoc.gio_ket_thuc || '--:--' %>)
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary" href="/buoi-hoc">Về buổi học</a>
+      <a class="btn btn-outline-primary" href="/diem-danh?buoi_hoc_id=<%= buoiHoc.id %>">Điểm danh thủ công (HLV)</a>
+    </div>
+  </div>
+
+  <% if (message) { %>
+    <div class="alert alert-success"><%= message %></div>
+  <% } %>
+  <% if (errorMessage) { %>
+    <div class="alert alert-danger"><%= errorMessage %></div>
+  <% } %>
+
+  <div id="expiredAlert" class="alert alert-warning d-none">
+    Phiên điểm danh đã hết hạn. QR và PIN đã bị vô hiệu. Vui lòng tạo phiên mới.
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <h2 class="h5 mb-3">QR điểm danh</h2>
+          <div id="qrWrap">
+            <img
+              id="qrImage"
+              src="https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=<%= encodeURIComponent(checkInUrl) %>"
+              alt="QR điểm danh"
+              width="360"
+              height="360"
+              class="img-fluid border rounded"
+            />
+            <div class="mt-2">
+              <a href="<%= checkInUrl %>" target="_blank" rel="noopener"><%= checkInUrl %></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body text-center">
+          <h2 class="h6 text-secondary">Mã PIN</h2>
+          <div id="pinCode" class="display-4 fw-bold text-primary"><%= attendance.pin %></div>
+          <p class="small text-secondary mb-0">Mã PIN 4 số dùng chung với QR trong cùng phiên.</p>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <h2 class="h6 text-secondary">Thời gian còn lại</h2>
+          <div id="countdown" class="display-6 fw-semibold">--:--</div>
+          <p class="small text-secondary mb-0">Hết hạn lúc <%= new Date(attendance.expiresAt).toLocaleTimeString('vi-VN') %></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const expiresAt = new Date('<%= attendance.expiresAt %>').getTime();
+    const countdown = document.getElementById('countdown');
+    const pinCode = document.getElementById('pinCode');
+    const qrWrap = document.getElementById('qrWrap');
+    const expiredAlert = document.getElementById('expiredAlert');
+
+    function render() {
+      const distance = expiresAt - Date.now();
+
+      if (distance <= 0) {
+        countdown.textContent = '00:00';
+        pinCode.classList.add('d-none');
+        qrWrap.classList.add('d-none');
+        expiredAlert.classList.remove('d-none');
+        return false;
+      }
+
+      const totalSec = Math.floor(distance / 1000);
+      const min = String(Math.floor(totalSec / 60)).padStart(2, '0');
+      const sec = String(totalSec % 60).padStart(2, '0');
+      countdown.textContent = `${min}:${sec}`;
+      return true;
+    }
+
+    if (!render()) {
+      return;
+    }
+
+    const timer = setInterval(function() {
+      if (!render()) {
+        clearInterval(timer);
+      }
+    }, 1000);
+  })();
+</script>
+
+<%- include('partials/footer') %>

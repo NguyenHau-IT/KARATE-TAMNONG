@@ -1,0 +1,180 @@
+<%- include('partials/header', { title, activePage: 'users' }) %>
+
+<div class="container">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+      <p class="text-uppercase text-secondary small fw-semibold mb-1">Admin</p>
+      <h1 class="h2 mb-2">Quản lý tài khoản</h1>
+      <p class="text-secondary mb-0">Cấp tài khoản cho huấn luyện viên hoặc võ sinh, khóa/mở khóa tài khoản khi cần.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/users">Làm mới</a>
+  </div>
+
+  <% if (message) { %>
+    <div class="alert alert-success" role="alert"><%= message %></div>
+  <% } %>
+
+  <% if (errorMessage) { %>
+    <div class="alert alert-danger" role="alert"><%= errorMessage %></div>
+  <% } %>
+
+  <div class="row g-4">
+    <div class="col-xl-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h2 class="h5 mb-3">Cấp tài khoản mới</h2>
+
+          <form method="post" action="/users/tao-tai-khoan" class="vstack gap-3">
+            <div>
+              <label class="form-label" for="ten_dang_nhap">Tên đăng nhập</label>
+              <input
+                id="ten_dang_nhap"
+                name="ten_dang_nhap"
+                type="text"
+                class="form-control"
+                maxlength="50"
+                required
+                placeholder="Ví dụ: hlv.nguyen01"
+              />
+              <div class="form-text">Chỉ dùng chữ thường, số, dấu chấm, gạch dưới, gạch ngang.</div>
+            </div>
+
+            <div>
+              <label class="form-label" for="mat_khau_tam">Mật khẩu tạm</label>
+              <input
+                id="mat_khau_tam"
+                name="mat_khau_tam"
+                type="text"
+                class="form-control"
+                minlength="6"
+                required
+                placeholder="Tối thiểu 6 ký tự"
+              />
+            </div>
+
+            <div>
+              <label class="form-label" for="vai_tro">Vai trò</label>
+              <select id="vai_tro" name="vai_tro" class="form-select" required>
+                <option value="huan_luyen_vien">Huấn luyện viên</option>
+                <option value="vo_sinh">Võ sinh</option>
+              </select>
+            </div>
+
+            <div id="voSinhSelectBlock" class="d-none">
+              <label class="form-label" for="vo_sinh_id">Liên kết hồ sơ võ sinh</label>
+              <select id="vo_sinh_id" name="vo_sinh_id" class="form-select">
+                <option value="">Chọn hồ sơ võ sinh</option>
+                <% voSinhOptions.forEach(function(item) { %>
+                  <option value="<%= item.id %>" <%= item.isLinked ? 'disabled' : '' %>>
+                    <%= item.ma_vo_sinh || 'Chưa có mã' %> — <%= item.ho_ten %><%= item.isLinked ? ' (đã có tài khoản)' : '' %>
+                  </option>
+                <% }) %>
+              </select>
+              <div class="form-text">Chỉ chọn hồ sơ chưa có tài khoản.</div>
+            </div>
+
+            <button class="btn btn-primary" type="submit">Tạo tài khoản</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-8">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 mb-0">Danh sách tài khoản</h2>
+            <span class="badge text-bg-secondary"><%= accountList.length %> tài khoản</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>Tên đăng nhập</th>
+                  <th>Vai trò</th>
+                  <th>Liên kết hồ sơ</th>
+                  <th>Trạng thái</th>
+                  <th>Đăng nhập cuối</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (!accountList.length) { %>
+                  <tr>
+                    <td colspan="7" class="text-center text-secondary py-4">Chưa có tài khoản nào.</td>
+                  </tr>
+                <% } %>
+
+                <% accountList.forEach(function(item) { %>
+                  <tr>
+                    <td><%= item.id %></td>
+                    <td class="fw-semibold"><%= item.ten_dang_nhap %></td>
+                    <td><%= item.vai_tro %></td>
+                    <td>
+                      <% if (item.vai_tro === 'vo_sinh' && item.vo_sinh) { %>
+                        <div><%= item.vo_sinh.ma_vo_sinh || 'Chưa có mã' %></div>
+                        <div class="small text-secondary"><%= item.vo_sinh.ho_ten %></div>
+                      <% } else { %>
+                        <span class="text-secondary">-</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (item.is_active) { %>
+                        <span class="badge text-bg-success">Đang hoạt động</span>
+                      <% } else { %>
+                        <span class="badge text-bg-secondary">Đã khóa</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <%= item.lan_dang_nhap_cuoi ? new Date(item.lan_dang_nhap_cuoi).toLocaleString('vi-VN') : 'Chưa có' %>
+                    </td>
+                    <td>
+                      <form method="post" action="/users/toggle-active/<%= item.id %>" class="m-0">
+                        <button
+                          type="submit"
+                          class="btn btn-sm <%= item.is_active ? 'btn-outline-danger' : 'btn-outline-success' %>"
+                          <%= item.ten_dang_nhap === 'admin' ? 'disabled' : '' %>
+                        >
+                          <%= item.is_active ? 'Khóa' : 'Mở khóa' %>
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var roleSelect = document.getElementById('vai_tro');
+    var voSinhBlock = document.getElementById('voSinhSelectBlock');
+    var voSinhSelect = document.getElementById('vo_sinh_id');
+
+    if (!roleSelect || !voSinhBlock || !voSinhSelect) {
+      return;
+    }
+
+    function syncRoleUI() {
+      var isVoSinhRole = roleSelect.value === 'vo_sinh';
+      voSinhBlock.classList.toggle('d-none', !isVoSinhRole);
+      voSinhSelect.required = isVoSinhRole;
+
+      if (!isVoSinhRole) {
+        voSinhSelect.value = '';
+      }
+    }
+
+    roleSelect.addEventListener('change', syncRoleUI);
+    syncRoleUI();
+  })();
+</script>
+
+<%- include('partials/footer') %>

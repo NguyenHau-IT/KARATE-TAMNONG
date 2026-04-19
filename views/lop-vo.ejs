@@ -75,7 +75,7 @@
                     <td>
                       <div class="d-flex gap-2">
                         <a class="btn btn-sm <%= selectedLopVoId === item.id ? 'btn-primary' : 'btn-outline-primary' %>" href="/lop-vo?lop_vo_id=<%= item.id %>">
-                          Quản lý võ sinh
+                          Quản lý
                         </a>
                         <form method="post" action="/lop-vo/xoa/<%= item.id %>" onsubmit="return confirm('Xóa lớp võ này?');">
                           <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
