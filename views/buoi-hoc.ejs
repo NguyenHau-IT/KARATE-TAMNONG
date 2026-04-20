@@ -7,6 +7,9 @@
       : 0;
     return memberCount > 0 ? total : total + 1;
   }, 0); %>
+  <% const totalSessionCount = (buoiHocList || []).length; %>
+  <% const activeSessionCount = Object.keys(activeAttendanceMap || {}).length; %>
+  <% const readySessionCount = totalSessionCount - emptyClassSessionCount; %>
 
   <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
     <div>
@@ -32,6 +35,33 @@
   <% if (errorMessage) { %>
     <div class="alert alert-danger"><%= errorMessage %></div>
   <% } %>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm border-0 h-100 operational-kpi-card">
+        <div class="card-body py-3">
+          <p class="text-secondary small mb-1">Tổng buổi học</p>
+          <h2 class="h3 mb-0"><%= totalSessionCount %></h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm border-0 h-100 operational-kpi-card operational-kpi-card-success">
+        <div class="card-body py-3">
+          <p class="text-secondary small mb-1">Phiên QR đang hoạt động</p>
+          <h2 class="h3 mb-0"><%= activeSessionCount %></h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-4">
+      <div class="card shadow-sm border-0 h-100 operational-kpi-card operational-kpi-card-warning">
+        <div class="card-body py-3">
+          <p class="text-secondary small mb-1">Buổi sẵn sàng điểm danh</p>
+          <h2 class="h3 mb-0"><%= readySessionCount %></h2>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="row g-4">
     <div class="col-lg-4">
@@ -66,7 +96,7 @@
               <label class="form-label" for="ghi_chu">Ghi chú</label>
               <textarea class="form-control" id="ghi_chu" name="ghi_chu" rows="3" maxlength="255"></textarea>
             </div>
-            <button class="btn btn-primary" type="submit">Tạo buổi học</button>
+            <button class="btn btn-primary" type="submit" data-loading-text="Đang tạo buổi học...">Tạo buổi học</button>
           </form>
         </div>
       </div>
@@ -79,6 +109,32 @@
             <h2 class="h5 mb-0">Danh sách buổi học</h2>
             <span class="badge text-bg-secondary"><%= buoiHocList.length %> mục</span>
           </div>
+
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label small text-secondary mb-1" for="sessionSearchInput">Tìm nhanh</label>
+              <input
+                id="sessionSearchInput"
+                type="search"
+                class="form-control"
+                placeholder="Tên lớp, ngày học, ghi chú..."
+                autocomplete="off"
+              />
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label small text-secondary mb-1" for="sessionStateSelect">Trạng thái</label>
+              <select id="sessionStateSelect" class="form-select">
+                <option value="all">Tất cả</option>
+                <option value="active">Đang hoạt động</option>
+                <option value="idle">Chưa mở phiên</option>
+                <option value="no-member">Chưa có võ sinh</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-2 d-grid">
+              <button id="sessionFilterResetBtn" type="button" class="btn btn-outline-secondary">Đặt lại</button>
+            </div>
+          </div>
+          <p id="sessionFilterSummary" class="small text-secondary mb-3" aria-live="polite"></p>
 
           <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -102,7 +158,16 @@
                 <% buoiHocList.forEach(function(item) { %>
                   <% const attendanceInfo = activeAttendanceMap ? activeAttendanceMap[item.id] : null; %>
                   <% const memberCount = lopVoMemberCountMap && lopVoMemberCountMap[String(item.lop_vo_id)] ? lopVoMemberCountMap[String(item.lop_vo_id)] : 0; %>
-                  <tr>
+                  <% const sessionState = memberCount === 0 ? 'no-member' : (attendanceInfo ? 'active' : 'idle'); %>
+                  <% const filterText = [
+                    item.id,
+                    item.ngay_hoc,
+                    item.gio_bat_dau,
+                    item.gio_ket_thuc,
+                    item.ghi_chu,
+                    item.lop_vo ? item.lop_vo.ten_lop : ('lop ' + item.lop_vo_id)
+                  ].filter(Boolean).join(' ').toLowerCase(); %>
+                  <tr data-session-row="true" data-state="<%= sessionState %>" data-filter-text="<%= filterText %>">
                     <td><%= item.id %></td>
                     <td>
                       <div><%= item.lop_vo ? item.lop_vo.ten_lop : ('#' + item.lop_vo_id) %></div>
@@ -141,7 +206,7 @@
                         <% } %>
                         <a class="btn btn-sm btn-outline-warning" href="/vang-mat?buoi_hoc_id=<%= item.id %>">Xem vắng mặt</a>
                         <form method="post" action="/buoi-hoc/xoa/<%= item.id %>" onsubmit="return confirm('Xóa buổi học này?');">
-                          <button class="btn btn-sm btn-outline-danger" type="submit">Xóa</button>
+                          <button class="btn btn-sm btn-outline-danger" type="submit" data-loading-text="Đang xóa...">Xóa</button>
                         </form>
                       </div>
                     </td>
@@ -150,10 +215,82 @@
               </tbody>
             </table>
           </div>
+          <div id="sessionFilterEmptyState" class="alert alert-light border mt-3 d-none mb-0" role="status" aria-live="polite">
+            Không tìm thấy buổi học phù hợp với bộ lọc hiện tại.
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  (function() {
+    const rows = Array.from(document.querySelectorAll('tr[data-session-row="true"]'));
+    const searchInput = document.getElementById('sessionSearchInput');
+    const stateSelect = document.getElementById('sessionStateSelect');
+    const resetButton = document.getElementById('sessionFilterResetBtn');
+    const summaryEl = document.getElementById('sessionFilterSummary');
+    const emptyStateEl = document.getElementById('sessionFilterEmptyState');
+
+    if (!rows.length || !searchInput || !stateSelect || !resetButton || !summaryEl || !emptyStateEl) {
+      return;
+    }
+
+    let debounceTimer = null;
+
+    function renderSummary(visibleCount) {
+      const total = rows.length;
+
+      if (visibleCount === total) {
+        summaryEl.textContent = `Hiển thị toàn bộ ${total} buổi học.`;
+        return;
+      }
+
+      summaryEl.textContent = `Đang hiển thị ${visibleCount}/${total} buổi học theo bộ lọc.`;
+    }
+
+    function applyFilters() {
+      const keyword = (searchInput.value || '').trim().toLowerCase();
+      const state = stateSelect.value || 'all';
+      let visibleCount = 0;
+
+      rows.forEach(function(row) {
+        const text = (row.getAttribute('data-filter-text') || '').toLowerCase();
+        const rowState = row.getAttribute('data-state') || 'idle';
+
+        const keywordMatch = !keyword || text.includes(keyword);
+        const stateMatch = state === 'all' || state === rowState;
+        const show = keywordMatch && stateMatch;
+
+        row.classList.toggle('d-none', !show);
+
+        if (show) {
+          visibleCount += 1;
+        }
+      });
+
+      renderSummary(visibleCount);
+      emptyStateEl.classList.toggle('d-none', visibleCount !== 0);
+    }
+
+    function scheduleApplyFilters() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(applyFilters, 180);
+    }
+
+    searchInput.addEventListener('input', scheduleApplyFilters);
+    stateSelect.addEventListener('change', applyFilters);
+
+    resetButton.addEventListener('click', function() {
+      searchInput.value = '';
+      stateSelect.value = 'all';
+      applyFilters();
+      searchInput.focus();
+    });
+
+    applyFilters();
+  })();
+</script>
 
 <%- include('partials/footer') %>

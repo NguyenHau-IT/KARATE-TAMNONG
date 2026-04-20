@@ -254,6 +254,7 @@ router.get('/', async function(req, res, next) {
       activePage: 'check-in',
       token: inputToken,
       tokenValid: Boolean(tokenVerify && tokenVerify.ok),
+      tokenExpiresAt: tokenVerify && tokenVerify.ok && tokenVerify.data ? tokenVerify.data.expiresAt : null,
       buoiHocList,
       selectedBuoiHoc,
       selectedBuoiHocId: selectedBuoiHocId || null,

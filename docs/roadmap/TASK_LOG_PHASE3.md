@@ -3,7 +3,7 @@
 ## Mục tiêu
 Mở rộng quan sát sang luồng đăng nhập và điểm danh trực tiếp để có trace gần end-to-end:
 - Login / Refresh / Logout
-- Check-in (view + submit QR/PIN)
+- Check-in (view + submit QR)
 
 ## Đã triển khai
 
@@ -32,12 +32,12 @@ Thêm structured log cho:
 Các trạng thái chính:
 - `started`
 - `validation_failed`
-- `failed` (không thuộc lớp, đã điểm danh trước đó, lỗi token/pin)
+- `failed` (không thuộc lớp, đã điểm danh trước đó, lỗi token)
 - `succeeded`
 
 Metadata tiêu biểu:
-- `hasToken`, `hasPin`, `selectedBuoiHocId`
-- `voSinhId`, `method` (`checkin_qr|checkin_pin`)
+- `hasToken`, `selectedBuoiHocId`
+- `voSinhId`, `method` (`checkin_qr`)
 - `reason`, `durationMs`
 
 ## File thay đổi

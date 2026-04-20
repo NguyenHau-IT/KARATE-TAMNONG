@@ -23,6 +23,29 @@
   <% } %>
 
   <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
+      <div>
+        <p class="small text-secondary mb-1">Trạng thái QR token</p>
+        <% if (token && tokenValid) { %>
+          <p class="mb-0 text-success fw-semibold">Hợp lệ — có thể điểm danh ngay.</p>
+        <% } else if (token && !tokenValid) { %>
+          <p class="mb-0 text-danger fw-semibold">Token không hợp lệ hoặc đã hết hạn.</p>
+        <% } else { %>
+          <p class="mb-0 text-warning fw-semibold">Chưa có token. Vui lòng quét QR để tiếp tục.</p>
+        <% } %>
+      </div>
+
+      <% if (token && tokenValid && tokenExpiresAt) { %>
+        <div class="text-lg-end">
+          <p class="small text-secondary mb-1">Hết hạn lúc</p>
+          <p class="mb-0 fw-semibold"><%= new Date(tokenExpiresAt).toLocaleTimeString('vi-VN') %></p>
+          <p id="tokenCountdown" class="small text-secondary mb-0">--:--</p>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
       <form method="get" action="/check-in" class="row g-3 align-items-end">
         <div class="col-lg-8">
@@ -38,7 +61,7 @@
           </select>
         </div>
         <div class="col-lg-4 d-grid">
-          <button class="btn btn-primary" type="submit">Tải danh sách võ sinh</button>
+          <button class="btn btn-primary" type="submit" data-loading-text="Đang tải danh sách...">Tải danh sách võ sinh</button>
         </div>
       </form>
     </div>
@@ -55,6 +78,12 @@
               <strong><%= selectedBuoiHoc.lop_vo ? selectedBuoiHoc.lop_vo.ten_lop : ('Lớp #' + selectedBuoiHoc.lop_vo_id) %></strong>
               (<%= selectedBuoiHoc.ngay_hoc %>, <%= selectedBuoiHoc.gio_bat_dau || '--:--' %> - <%= selectedBuoiHoc.gio_ket_thuc || '--:--' %>)
             </div>
+
+            <% if (!voSinhOptions || !voSinhOptions.length) { %>
+              <div class="alert alert-warning" role="alert" aria-live="polite">
+                Buổi học này hiện chưa có võ sinh khả dụng cho tài khoản của bạn. Vui lòng liên hệ HLV/Admin để kiểm tra danh sách lớp.
+              </div>
+            <% } %>
 
             <form method="post" action="/check-in" class="vstack gap-3">
               <input type="hidden" name="token" value="<%= token || '' %>" />
@@ -79,7 +108,10 @@
                 <% } %>
               </div>
 
-              <button class="btn btn-success" type="submit" aria-label="Xác nhận điểm danh võ sinh">Điểm danh</button>
+              <button class="btn btn-success" type="submit" aria-label="Xác nhận điểm danh võ sinh" data-loading-text="Đang điểm danh..." <%= !token || !tokenValid || !voSinhOptions || !voSinhOptions.length ? 'disabled' : '' %>>Điểm danh</button>
+              <% if (!token || !tokenValid || !voSinhOptions || !voSinhOptions.length) { %>
+                <p class="small text-secondary mb-0">Cần QR token hợp lệ và võ sinh khả dụng trước khi xác nhận điểm danh.</p>
+              <% } %>
             </form>
           </div>
         </div>
@@ -100,5 +132,44 @@
     </div>
   <% } %>
 </div>
+
+<% if (token && tokenValid && tokenExpiresAt) { %>
+  <script>
+    (function() {
+      const countdownEl = document.getElementById('tokenCountdown');
+
+      if (!countdownEl) {
+        return;
+      }
+
+      const expiresAtMs = new Date('<%= tokenExpiresAt %>').getTime();
+
+      function renderCountdown() {
+        const distance = expiresAtMs - Date.now();
+
+        if (distance <= 0) {
+          countdownEl.textContent = 'Token đã hết hạn';
+          return false;
+        }
+
+        const totalSec = Math.floor(distance / 1000);
+        const min = String(Math.floor(totalSec / 60)).padStart(2, '0');
+        const sec = String(totalSec % 60).padStart(2, '0');
+        countdownEl.textContent = `Còn ${min}:${sec}`;
+        return true;
+      }
+
+      if (!renderCountdown()) {
+        return;
+      }
+
+      const timer = setInterval(function() {
+        if (!renderCountdown()) {
+          clearInterval(timer);
+        }
+      }, 1000);
+    })();
+  </script>
+<% } %>
 
 <%- include('partials/footer') %>

@@ -16,6 +16,22 @@
     </div>
   </div>
 
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
+        <div>
+          <p class="small text-secondary mb-1">Lối tắt vận hành</p>
+          <p class="mb-0">Thao tác nhanh theo thứ tự ưu tiên trong ca làm việc.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-sm btn-primary" href="/buoi-hoc">Mở buổi học</a>
+          <a class="btn btn-sm btn-outline-primary" href="/diem-danh">Mở điểm danh</a>
+          <a class="btn btn-sm btn-outline-secondary" href="/vang-mat">Kiểm tra vắng mặt</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="row g-4 mb-4">
     <div class="col-md-4">
       <div class="card border-0 shadow-sm h-100">
@@ -92,12 +108,28 @@
     <div class="col-lg-5">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
-          <h2 class="h5 mb-3">Truy cập nhanh</h2>
+          <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="h5 mb-0">Truy cập nhanh</h2>
+            <span class="badge text-bg-light border text-dark" id="quickLinkCountBadge"><%= quickLinks.length %> mục</span>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small text-secondary mb-1" for="quickLinkSearchInput">Tìm chức năng</label>
+            <input
+              type="search"
+              id="quickLinkSearchInput"
+              class="form-control"
+              placeholder="Ví dụ: điểm danh, lớp võ, vắng mặt..."
+              autocomplete="off"
+            />
+          </div>
+          <p id="quickLinkSearchSummary" class="small text-secondary mb-3" aria-live="polite"></p>
 
           <div class="d-grid gap-3">
             <% quickLinks.forEach(function(link) { %>
-              <a class="text-decoration-none" href="<%= link.href %>">
-                <div class="border rounded-4 p-3 bg-body-tertiary quick-link-card">
+              <% const quickFilterText = [link.title, link.description, link.action].join(' ').toLowerCase(); %>
+              <a class="text-decoration-none" href="<%= link.href %>" data-quick-link="true" data-filter-text="<%= quickFilterText %>">
+                <div class="border rounded-4 p-3 bg-body-tertiary quick-link-card" role="group" aria-label="<%= link.title %>">
                   <div class="d-flex justify-content-between align-items-start gap-3">
                     <div>
                       <h3 class="h6 mb-1 text-dark"><%= link.title %></h3>
@@ -109,10 +141,66 @@
               </a>
             <% }) %>
           </div>
+          <div id="quickLinkEmptyState" class="alert alert-light border mt-3 d-none mb-0" role="status" aria-live="polite">
+            Không tìm thấy chức năng phù hợp với từ khóa. Hãy thử từ khác.
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+  (function() {
+    const input = document.getElementById('quickLinkSearchInput');
+    const summary = document.getElementById('quickLinkSearchSummary');
+    const countBadge = document.getElementById('quickLinkCountBadge');
+    const emptyState = document.getElementById('quickLinkEmptyState');
+    const links = Array.from(document.querySelectorAll('a[data-quick-link="true"]'));
+
+    if (!input || !summary || !countBadge || !emptyState || !links.length) {
+      return;
+    }
+
+    let debounceTimer = null;
+
+    function renderSummary(visibleCount, totalCount) {
+      if (visibleCount === totalCount) {
+        summary.textContent = `Hiển thị toàn bộ ${totalCount} chức năng.`;
+      } else {
+        summary.textContent = `Hiển thị ${visibleCount}/${totalCount} chức năng theo từ khóa.`;
+      }
+
+      countBadge.textContent = `${visibleCount} mục`;
+      emptyState.classList.toggle('d-none', visibleCount !== 0);
+    }
+
+    function applyFilter() {
+      const keyword = (input.value || '').trim().toLowerCase();
+      let visibleCount = 0;
+
+      links.forEach(function(link) {
+        const text = (link.getAttribute('data-filter-text') || '').toLowerCase();
+        const show = !keyword || text.includes(keyword);
+
+        link.classList.toggle('d-none', !show);
+
+        if (show) {
+          visibleCount += 1;
+        }
+      });
+
+      renderSummary(visibleCount, links.length);
+    }
+
+    function scheduleFilter() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(applyFilter, 180);
+    }
+
+    input.addEventListener('input', scheduleFilter);
+    applyFilter();
+  })();
+</script>
 
 <%- include('partials/footer') %>

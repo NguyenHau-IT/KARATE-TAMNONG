@@ -6,7 +6,7 @@
 - Tạo bộ minh chứng rõ để đưa vào CV: source code, demo, tài liệu, video.
 
 ## 2) Elevator pitch (30 giây)
-**Karate Attendance System** là web app/web mobile giúp huấn luyện viên điểm danh võ sinh nhanh bằng PIN hoặc QR, theo dõi trạng thái Có mặt/Có phép/Không phép theo thời gian thực, lọc dữ liệu linh hoạt và xuất báo cáo điểm danh theo buổi.
+**Karate Attendance System** là web app/web mobile giúp huấn luyện viên điểm danh võ sinh nhanh bằng QR, theo dõi trạng thái Có mặt/Có phép/Không phép theo thời gian thực, lọc dữ liệu linh hoạt và xuất báo cáo điểm danh theo buổi.
 
 ## 3) Scope chức năng đề xuất
 
@@ -14,8 +14,8 @@
 - Giảng viên được cung cấp tài khoản riêng để đăng nhập vào dashboard chính.
 - Võ sinh được cung cấp tài khoản riêng để đăng nhập vào khu vực điểm danh cá nhân.
 - Giảng viên mở buổi học và bấm nút **Điểm danh** để mở tab trình chiếu theo buổi học.
-- Tab trình chiếu hiển thị đồng thời QR phóng to + PIN 4 số + countdown dùng chung.
-- Sau khi đăng nhập, võ sinh điểm danh tại `/check-in` bằng quét QR hoặc nhập PIN.
+- Tab trình chiếu hiển thị QR phóng to + countdown.
+- Sau khi đăng nhập, võ sinh điểm danh tại `/check-in` bằng quét QR.
 
 ### B. Tab Điểm danh
 - Danh sách võ sinh theo buổi học.
@@ -104,7 +104,7 @@
 - `POST /buoi-hoc/tao` (tạo buổi)
 - `POST /buoi-hoc/xoa/:id` (xóa buổi)
 - `GET /buoi-hoc/diem-danh/:id` (mở tab trình chiếu điểm danh trực tiếp cho buổi học)
-- `GET /check-in` (view võ sinh điểm danh bằng QR hoặc PIN)
+- `GET /check-in` (view võ sinh điểm danh bằng QR)
 - `POST /check-in` (xác nhận điểm danh võ sinh)
 - `GET /diem-danh?buoi_hoc_id=` (màn hình điểm danh + tổng hợp)
 - `POST /diem-danh/cap-nhat` (tạo/cập nhật điểm danh)
@@ -117,13 +117,12 @@
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
 
-### Sessions + Generate PIN/QR
+### Sessions + Generate QR
 - `POST /api/sessions` (mở buổi)
 - `GET /api/sessions/:id`
-- `POST /api/sessions/:id/generate-attendance-code` (generate đồng thời PIN + QR)
-- `GET /api/sessions/:id/attendance-code` (lấy PIN + QR đang hiệu lực)
+- `POST /api/sessions/:id/generate-attendance-code` (generate QR token)
+- `GET /api/sessions/:id/attendance-code` (lấy QR token đang hiệu lực)
 - `POST /api/attendance/check-in-qr` (võ sinh quét QR)
-- `POST /api/attendance/check-in-pin` (võ sinh nhập PIN thủ công)
 
 ### Attendance
 - `GET /api/attendance?sessionId=&status=&beltId=&q=`
@@ -139,9 +138,9 @@
 ## 7) User flow chính
 1. Giảng viên đăng nhập bằng tài khoản riêng và vào dashboard chính.
 2. Giảng viên tạo/mở buổi học.
-3. Giảng viên bấm nút Điểm danh tại buổi học, mở tab trình chiếu có QR + PIN + countdown.
+3. Giảng viên bấm nút Điểm danh tại buổi học, mở tab trình chiếu có QR + countdown.
 4. Võ sinh đăng nhập bằng tài khoản riêng.
-5. Võ sinh điểm danh bằng 1 trong 2 cách: quét QR hoặc nhập thủ công PIN tại `/check-in`.
+5. Võ sinh điểm danh bằng quét QR tại `/check-in`.
 6. Giảng viên xử lý thủ công các trường hợp còn thiếu tại `/diem-danh?buoi_hoc_id=` thành Có mặt/Có phép/Không phép.
 7. Tab Vắng mặt hiển thị rõ 2 nhóm vắng.
 8. Kết thúc buổi: xem báo cáo tổng kết.
@@ -154,8 +153,8 @@
 - Soft delete cho học viên để giữ lịch sử điểm danh.
 
 ## 9) Bảo mật tối thiểu (mức intern/junior tốt)
-- Không lưu password/PIN thô, dùng hash (`bcryptjs`).
-- Rate limit cho endpoint login và endpoint check-in theo PIN.
+- Không lưu password thô, dùng hash (`bcryptjs`).
+- Rate limit cho endpoint login và endpoint check-in.
 - Kiểm tra quyền trước khi sửa điểm danh.
 - Tách key `SERVICE_ROLE` khỏi frontend tuyệt đối.
 - Dùng `helmet` + sanitize input + chuẩn hóa lỗi API.

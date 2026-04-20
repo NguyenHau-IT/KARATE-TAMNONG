@@ -18,7 +18,7 @@
 - Chốt yêu cầu MVP, phạm vi tính năng và kiến trúc.
 
 ### Việc cần làm
-- Chốt user flow: Login PIN, Tab Điểm danh, Tab Danh sách, Tab Vắng mặt.
+- Chốt user flow: Login, Tab Điểm danh, Tab Danh sách, Tab Vắng mặt.
 - Thiết kế ERD và schema DB trên Supabase.
 - Tạo project structure backend (routes/controllers/services/middlewares).
 - Tạo bộ dữ liệu seed (bậc đai, võ sinh mẫu).
@@ -79,23 +79,23 @@
 
 ---
 
-## Tuần 4 — Điểm danh trực tiếp (PIN + QR)
+## Tuần 4 — Điểm danh trực tiếp (QR)
 ### Mục tiêu
-- Võ sinh có thể tự check-in bằng QR hoặc PIN trong cùng một phiên điểm danh.
+- Võ sinh có thể tự check-in bằng QR token trong cùng một phiên điểm danh.
 
 ### Việc cần làm
-- Tạo tab trình chiếu điểm danh từ `/buoi-hoc` với QR lớn + PIN + countdown chung.
-- Route `/check-in` dùng chung cho cả QR token và PIN.
-- Vô hiệu đồng thời QR/PIN khi hết countdown.
+- Tạo tab trình chiếu điểm danh từ `/buoi-hoc` với QR lớn + countdown.
+- Route `/check-in` dùng cho QR token.
+- Vô hiệu QR khi hết countdown.
 - Chống duplicate check-in và token replay.
 
 ### Kết quả đầu ra
-- Luồng điểm danh trực tiếp gộp PIN/QR hoạt động end-to-end.
+- Luồng điểm danh trực tiếp QR hoạt động end-to-end.
 
 ### Definition of Done
 - [ ] Token hết hạn không dùng lại được
 - [ ] Không tạo trùng điểm danh cho cùng võ sinh/buổi
-- [ ] Có log phương thức check-in (manual/pin/qr)
+- [ ] Có log phương thức check-in (manual/qr)
 
 ---
 
@@ -125,7 +125,7 @@
 
 ### Việc cần làm
 - Refactor code, dọn technical debt.
-- Bổ sung bảo mật cơ bản: hash PIN, rate limit login, kiểm tra quyền.
+- Bổ sung bảo mật cơ bản: hash password, rate limit login, kiểm tra quyền.
 - Chuẩn hóa auth production: access token ngắn hạn + refresh token rotation + JWT key rotation.
 - Viết README chuẩn:
   - Mô tả bài toán
