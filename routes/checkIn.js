@@ -1,7 +1,7 @@
 const express = require('express');
 
 const supabase = require('../config/supabase');
-const attendanceSessionStore = require('../utils/attendanceSessionStore');
+const attendanceSessionService = require('../services/attendanceSessionDbService');
 const { checkInLimiter } = require('../middlewares/rateLimit');
 const { getPublicViewErrorMessage } = require('../utils/publicError');
 const { logInfo, logWarn, logError } = require('../utils/appLogger');
@@ -73,6 +73,34 @@ function createRedirectWithMessage(path, message, error) {
 
   return path.includes('?') ? `${path}&${query}` : `${path}?${query}`;
 }
+
+router.use(function(req, res, next) {
+  if (req.baseUrl !== '/check-in-pin') {
+    return next();
+  }
+
+  const redirectParams = new URLSearchParams();
+
+  Object.entries(req.query || {}).forEach(function(entry) {
+    const key = entry[0];
+    const value = entry[1];
+
+    if (value === null || value === undefined || value === '') {
+      return;
+    }
+
+    redirectParams.set(key, value);
+  });
+
+  if (!redirectParams.get('message') && !redirectParams.get('error')) {
+    redirectParams.set('message', 'Check-in bằng PIN đã ngừng hỗ trợ. Vui lòng dùng QR');
+  }
+
+  const query = redirectParams.toString();
+  const target = query ? `/check-in?${query}` : '/check-in';
+
+  return res.redirect(target);
+});
 
 async function loadBuoiHocList() {
   const { data, error } = await supabase
@@ -167,7 +195,7 @@ router.get('/', async function(req, res, next) {
   try {
     const inputToken = normalizeText(req.query.token);
     const selectedBuoiHocIdParam = parsePositiveInt(req.query.buoi_hoc_id);
-    const tokenVerify = inputToken ? attendanceSessionStore.verifyToken(inputToken) : null;
+    const tokenVerify = inputToken ? await attendanceSessionService.verifyToken(inputToken) : null;
 
     logCheckInEvent(req, 'info', 'view_load', 'started', {
       hasToken: Boolean(inputToken),
@@ -249,16 +277,12 @@ router.post('/', checkInLimiter, async function(req, res) {
 
   try {
     const token = normalizeText(req.body.token);
-    const pin = normalizeText(req.body.pin_code);
-    const selectedBuoiHocId = parsePositiveInt(req.body.buoi_hoc_id);
     const requestedVoSinhId = parsePositiveInt(req.body.vo_sinh_id);
     const voSinhId =
       req.currentUser && req.currentUser.role === 'vo_sinh' ? req.currentUser.linkedVoSinhId : requestedVoSinhId;
 
     logCheckInEvent(req, 'info', 'submit', 'started', {
       hasToken: Boolean(token),
-      hasPin: Boolean(pin),
-      selectedBuoiHocId,
       requestedVoSinhId,
       effectiveVoSinhId: voSinhId
     });
@@ -271,57 +295,28 @@ router.post('/', checkInLimiter, async function(req, res) {
       return res.redirect(createRedirectWithMessage('/check-in', '', 'Thiếu thông tin võ sinh'));
     }
 
-    let buoiHocId = selectedBuoiHocId;
-    let method = '';
-
-    if (token) {
-      const tokenVerify = attendanceSessionStore.verifyToken(token);
-
-      if (!tokenVerify.ok) {
-        logCheckInEvent(req, 'warn', 'submit', 'validation_failed', {
-          voSinhId,
-          reason: tokenVerify.reason || 'invalid_qr_token'
-        });
-
-        return res.redirect(createRedirectWithMessage('/check-in', '', tokenVerify.reason));
-      }
-
-      buoiHocId = tokenVerify.sessionId;
-      method = 'checkin_qr';
-    } else {
-      if (!buoiHocId || !pin) {
-        logCheckInEvent(req, 'warn', 'submit', 'validation_failed', {
-          voSinhId,
-          selectedBuoiHocId,
-          reason: 'missing_buoi_hoc_or_pin'
-        });
-
-        return res.redirect(createRedirectWithMessage('/check-in', '', 'Thiếu buổi học hoặc mã PIN'));
-      }
-
-      const pinVerify = attendanceSessionStore.verifyPin(buoiHocId, pin);
-
-      if (!pinVerify.ok) {
-        logCheckInEvent(req, 'warn', 'submit', 'validation_failed', {
-          voSinhId,
-          buoiHocId,
-          reason: pinVerify.reason || 'invalid_pin'
-        });
-
-        return res.redirect(createRedirectWithMessage(`/check-in?buoi_hoc_id=${buoiHocId}`, '', pinVerify.reason));
-      }
-
-      method = 'checkin_pin';
-    }
-
-    if (!buoiHocId) {
+    if (!token) {
       logCheckInEvent(req, 'warn', 'submit', 'validation_failed', {
         voSinhId,
-        reason: 'missing_effective_buoi_hoc_id'
+        reason: 'missing_qr_token'
       });
 
-      return res.redirect(createRedirectWithMessage('/check-in', '', 'Không xác định được buổi học điểm danh'));
+      return res.redirect(createRedirectWithMessage('/check-in', '', 'Thiếu QR token. Vui lòng quét mã QR để điểm danh'));
     }
+
+    const tokenVerify = await attendanceSessionService.verifyToken(token);
+
+    if (!tokenVerify.ok) {
+      logCheckInEvent(req, 'warn', 'submit', 'validation_failed', {
+        voSinhId,
+        reason: tokenVerify.reason || 'invalid_qr_token'
+      });
+
+      return res.redirect(createRedirectWithMessage('/check-in', '', tokenVerify.reason));
+    }
+
+    const buoiHocId = tokenVerify.sessionId;
+    const method = 'checkin_qr';
 
     const { data: buoiHoc, error: buoiHocError } = await supabase
       .from('buoi_hoc')

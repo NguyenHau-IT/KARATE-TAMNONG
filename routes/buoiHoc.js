@@ -1,7 +1,7 @@
 const express = require('express');
 
 const supabase = require('../config/supabase');
-const attendanceSessionStore = require('../utils/attendanceSessionStore');
+const attendanceSessionService = require('../services/attendanceSessionDbService');
 const { getPublicViewErrorMessage } = require('../utils/publicError');
 
 const router = express.Router();
@@ -120,10 +120,31 @@ async function loadBuoiHocList() {
   return data || [];
 }
 
+async function loadLopVoMemberCountMap() {
+  const { data, error } = await supabase.from('vo_sinh_lop').select('lop_vo_id').not('lop_vo_id', 'is', null);
+
+  if (error) {
+    throw error;
+  }
+
+  const map = {};
+
+  (data || []).forEach(function(item) {
+    const key = String(item.lop_vo_id);
+    map[key] = (map[key] || 0) + 1;
+  });
+
+  return map;
+}
+
 router.get('/', async function(req, res, next) {
   try {
-    const [lopVoList, buoiHocList] = await Promise.all([loadLopVoList(), loadBuoiHocList()]);
-    const activeAttendanceMap = attendanceSessionStore.getActiveMap(
+    const [lopVoList, buoiHocList, lopVoMemberCountMap] = await Promise.all([
+      loadLopVoList(),
+      loadBuoiHocList(),
+      loadLopVoMemberCountMap()
+    ]);
+    const activeAttendanceMap = await attendanceSessionService.getActiveMap(
       buoiHocList.map(function(item) {
         return item.id;
       })
@@ -134,6 +155,7 @@ router.get('/', async function(req, res, next) {
       activePage: 'buoi-hoc',
       lopVoList,
       buoiHocList,
+      lopVoMemberCountMap,
       activeAttendanceMap,
       message: req.query.message || '',
       errorMessage: req.query.error || ''
@@ -260,7 +282,34 @@ router.get('/diem-danh/:id', async function(req, res) {
       return res.redirect(createRedirectWithMessage('/buoi-hoc', '', 'Không tìm thấy buổi học'));
     }
 
-    const attendance = attendanceSessionStore.generate(buoiHocId, safeTtlMinutes);
+    const { count: memberCount, error: memberCountError } = await supabase
+      .from('vo_sinh_lop')
+      .select('*', { count: 'exact', head: true })
+      .eq('lop_vo_id', buoiHoc.lop_vo_id);
+
+    if (memberCountError) {
+      return res.redirect(
+        createRedirectWithMessage(
+          '/buoi-hoc',
+          '',
+          getPublicViewErrorMessage(memberCountError, 'Không thể kiểm tra danh sách võ sinh của lớp lúc này')
+        )
+      );
+    }
+
+    if (!memberCount) {
+      return res.redirect(
+        createRedirectWithMessage(
+          '/buoi-hoc',
+          '',
+          'Lớp của buổi học này chưa có võ sinh. Vui lòng thêm võ sinh vào lớp trước khi mở phiên điểm danh'
+        )
+      );
+    }
+
+    const attendance = await attendanceSessionService.generate(buoiHocId, safeTtlMinutes, {
+      createdByAccountId: req.currentUser ? req.currentUser.accountId : null
+    });
     const appBaseUrl = `${req.protocol}://${req.get('host')}`;
     const checkInUrl = `${appBaseUrl}/check-in?token=${encodeURIComponent(attendance.token)}`;
 

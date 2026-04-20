@@ -52,9 +52,9 @@
         <div class="col-12 d-flex gap-2">
           <button class="btn btn-primary" type="submit" aria-label="Lọc danh sách vắng mặt">Lọc</button>
           <% if (selectedBuoiHocId) { %>
-            <a class="btn btn-outline-secondary" href="/vang-mat?buoi_hoc_id=<%= selectedBuoiHocId %>" aria-label="Xóa bộ lọc tab vắng mặt theo buổi học hiện tại">Xóa lọc</a>
+            <a class="btn btn-outline-secondary js-clear-filters" href="/vang-mat?buoi_hoc_id=<%= selectedBuoiHocId %>" aria-label="Xóa bộ lọc tab vắng mặt theo buổi học hiện tại">Xóa lọc</a>
           <% } else { %>
-            <a class="btn btn-outline-secondary" href="/vang-mat" aria-label="Xóa toàn bộ bộ lọc tab vắng mặt">Xóa lọc</a>
+            <a class="btn btn-outline-secondary js-clear-filters" href="/vang-mat" aria-label="Xóa toàn bộ bộ lọc tab vắng mặt">Xóa lọc</a>
           <% } %>
         </div>
       </form>
@@ -128,8 +128,85 @@
 
     var keywordInput = filterForm.querySelector('input[name="q"]');
     var loaiVangSelect = filterForm.querySelector('select[name="loai_vang"]');
+    var buoiHocSelect = filterForm.querySelector('select[name="buoi_hoc_id"]');
+    var clearFilterButton = document.querySelector('.js-clear-filters');
     var debounceTimer = null;
     var FILTER_DEBOUNCE_MS = 350;
+
+    function getFilterStorageKey() {
+      if (!buoiHocSelect) {
+        return null;
+      }
+
+      var buoiHocId = (buoiHocSelect.value || '').trim();
+
+      if (!buoiHocId) {
+        return null;
+      }
+
+      return 'vangMatFilter:' + buoiHocId;
+    }
+
+    function saveFiltersToStorage() {
+      var storageKey = getFilterStorageKey();
+
+      if (!storageKey) {
+        return;
+      }
+
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          q: keywordInput ? (keywordInput.value || '') : '',
+          loai_vang: loaiVangSelect ? (loaiVangSelect.value || '') : ''
+        })
+      );
+    }
+
+    function restoreFiltersFromStorage() {
+      var storageKey = getFilterStorageKey();
+
+      if (!storageKey) {
+        return;
+      }
+
+      var raw = localStorage.getItem(storageKey);
+
+      if (!raw) {
+        return;
+      }
+
+      var hasQuery = new URLSearchParams(window.location.search).toString().includes('q=')
+        || new URLSearchParams(window.location.search).toString().includes('loai_vang=');
+
+      if (hasQuery) {
+        return;
+      }
+
+      try {
+        var saved = JSON.parse(raw);
+
+        if (keywordInput && !keywordInput.value && saved.q) {
+          keywordInput.value = saved.q;
+        }
+
+        if (loaiVangSelect && !loaiVangSelect.value && saved.loai_vang) {
+          loaiVangSelect.value = saved.loai_vang;
+        }
+      } catch (error) {
+        localStorage.removeItem(storageKey);
+      }
+    }
+
+    function clearFiltersFromStorage() {
+      var storageKey = getFilterStorageKey();
+
+      if (!storageKey) {
+        return;
+      }
+
+      localStorage.removeItem(storageKey);
+    }
 
     function clearDebounceTimer() {
       if (!debounceTimer) {
@@ -142,6 +219,7 @@
 
     function submitNow() {
       clearDebounceTimer();
+      saveFiltersToStorage();
 
       if (filterForm.requestSubmit) {
         filterForm.requestSubmit();
@@ -153,13 +231,23 @@
 
     function scheduleSubmit() {
       clearDebounceTimer();
+      saveFiltersToStorage();
 
       debounceTimer = window.setTimeout(function() {
         submitNow();
       }, FILTER_DEBOUNCE_MS);
     }
 
-    filterForm.addEventListener('submit', clearDebounceTimer);
+    restoreFiltersFromStorage();
+
+    filterForm.addEventListener('submit', function() {
+      clearDebounceTimer();
+      saveFiltersToStorage();
+    });
+
+    filterForm.querySelectorAll('input, select').forEach(function(el) {
+      el.addEventListener('change', saveFiltersToStorage);
+    });
 
     if (keywordInput) {
       keywordInput.addEventListener('input', scheduleSubmit);
@@ -175,6 +263,13 @@
 
     if (loaiVangSelect) {
       loaiVangSelect.addEventListener('change', scheduleSubmit);
+    }
+
+    if (clearFilterButton) {
+      clearFilterButton.addEventListener('click', function() {
+        clearDebounceTimer();
+        clearFiltersFromStorage();
+      });
     }
   })();
 </script>

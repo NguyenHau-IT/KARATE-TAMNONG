@@ -102,7 +102,7 @@ async function verifyPassword(inputPassword, storedPassword) {
 
 function getDefaultRedirectByRole(role) {
   if (role === 'vo_sinh') {
-    return '/check-in-pin';
+    return '/check-in';
   }
 
   return '/';

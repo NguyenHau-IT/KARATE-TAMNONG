@@ -5,7 +5,7 @@
     <div>
       <p class="text-uppercase text-secondary small fw-semibold mb-1">Karate Tamnong</p>
       <h1 class="h2 mb-2">Điểm danh võ sinh</h1>
-      <p class="text-secondary mb-0">Võ sinh có thể điểm danh bằng QR hoặc PIN trên cùng một màn hình.</p>
+      <p class="text-secondary mb-0">Võ sinh điểm danh bằng QR token do HLV mở từ màn hình buổi học.</p>
     </div>
     <a class="btn btn-outline-secondary" href="/check-in">Làm mới</a>
   </div>
@@ -15,6 +15,11 @@
   <% } %>
   <% if (errorMessage) { %>
     <div class="alert alert-danger" role="alert" aria-live="assertive"><%= errorMessage %></div>
+  <% } %>
+  <% if (!token) { %>
+    <div class="alert alert-info" role="status" aria-live="polite">
+      Check-in bằng PIN đã ngừng hỗ trợ. Vui lòng quét mã QR từ tab điểm danh trực tiếp.
+    </div>
   <% } %>
 
   <div class="card border-0 shadow-sm mb-4">
@@ -53,7 +58,6 @@
 
             <form method="post" action="/check-in" class="vstack gap-3">
               <input type="hidden" name="token" value="<%= token || '' %>" />
-              <input type="hidden" name="buoi_hoc_id" value="<%= selectedBuoiHocId || '' %>" />
 
               <div>
                 <label class="form-label" for="vo_sinh_id">Võ sinh</label>
@@ -75,20 +79,6 @@
                 <% } %>
               </div>
 
-              <div>
-                <label class="form-label" for="pin_code">Mã PIN (nếu không dùng QR)</label>
-                <input
-                  class="form-control"
-                  id="pin_code"
-                  name="pin_code"
-                  maxlength="4"
-                  pattern="\d{4}"
-                  inputmode="numeric"
-                  placeholder="Nhập mã PIN 4 số"
-                  <%= token ? 'disabled' : '' %>
-                />
-              </div>
-
               <button class="btn btn-success" type="submit" aria-label="Xác nhận điểm danh võ sinh">Điểm danh</button>
             </form>
           </div>
@@ -100,9 +90,9 @@
           <div class="card-body">
             <h2 class="h5 mb-3">Cách dùng</h2>
             <ol class="mb-0 text-secondary">
-              <li>Nếu quét QR, hệ thống tự nhận buổi học qua token.</li>
-              <li>Nếu nhập PIN, chọn đúng buổi học rồi nhập mã 4 số.</li>
-              <li>Đến trễ/không kịp tự điểm danh sẽ do HLV xử lý ở màn hình điểm danh thủ công.</li>
+              <li>Quét QR trên tab điểm danh trực tiếp để vào đúng buổi học.</li>
+              <li>Hệ thống xác thực token tự động và ghi nhận điểm danh.</li>
+              <li>Nếu token hết hạn, nhờ HLV mở lại phiên điểm danh mới.</li>
             </ol>
           </div>
         </div>
