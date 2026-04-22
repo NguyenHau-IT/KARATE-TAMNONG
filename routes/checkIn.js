@@ -136,6 +136,25 @@ async function loadVoSinhOptionsByBuoiHoc(buoiHoc) {
   });
 }
 
+async function loadRecentAttendanceByVoSinh(voSinhId) {
+  if (!voSinhId) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('diem_danh')
+    .select('id, buoi_hoc_id, trang_thai_diem_danh, loai_vang, ly_do, ngay_cap_nhat, buoi_hoc:buoi_hoc_id(id, ngay_hoc, gio_bat_dau, gio_ket_thuc, lop_vo:lop_vo_id(id, ten_lop))')
+    .eq('vo_sinh_id', voSinhId)
+    .order('ngay_cap_nhat', { ascending: false })
+    .limit(10);
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
 async function markAttendancePresent(buoiHocId, voSinhId, method) {
   const { data: existing, error: existingError } = await supabase
     .from('diem_danh')
@@ -195,6 +214,7 @@ router.get('/', async function(req, res, next) {
   try {
     const inputToken = normalizeText(req.query.token);
     const selectedBuoiHocIdParam = parsePositiveInt(req.query.buoi_hoc_id);
+    const autoChecked = normalizeText(req.query.auto_checked) === '1';
     const tokenVerify = inputToken ? await attendanceSessionService.verifyToken(inputToken) : null;
 
     logCheckInEvent(req, 'info', 'view_load', 'started', {
@@ -219,8 +239,79 @@ router.get('/', async function(req, res, next) {
       errorMessage = errorMessage || (tokenVerify ? tokenVerify.reason : 'QR token không hợp lệ');
     }
 
+    if (
+      req.currentUser &&
+      req.currentUser.role === 'vo_sinh' &&
+      tokenVerify &&
+      tokenVerify.ok &&
+      !autoChecked
+    ) {
+      const voSinhId = req.currentUser.linkedVoSinhId;
+      const buoiHocId = tokenVerify.sessionId;
+      const redirectParams = new URLSearchParams();
+
+      redirectParams.set('token', inputToken);
+      redirectParams.set('buoi_hoc_id', String(buoiHocId));
+      redirectParams.set('auto_checked', '1');
+
+      if (!voSinhId) {
+        redirectParams.set('error', 'Tài khoản võ sinh chưa được liên kết hồ sơ. Vui lòng liên hệ quản trị viên');
+        return res.redirect(`/check-in?${redirectParams.toString()}`);
+      }
+
+      const { data: buoiHoc, error: buoiHocError } = await supabase
+        .from('buoi_hoc')
+        .select('id, lop_vo_id')
+        .eq('id', buoiHocId)
+        .maybeSingle();
+
+      if (buoiHocError || !buoiHoc) {
+        redirectParams.set('error', buoiHocError ? getPublicViewErrorMessage(buoiHocError, 'Không tìm thấy buổi học') : 'Không tìm thấy buổi học');
+        return res.redirect(`/check-in?${redirectParams.toString()}`);
+      }
+
+      const { data: relation, error: relationError } = await supabase
+        .from('vo_sinh_lop')
+        .select('id')
+        .eq('lop_vo_id', buoiHoc.lop_vo_id)
+        .eq('vo_sinh_id', voSinhId)
+        .maybeSingle();
+
+      if (relationError || !relation) {
+        redirectParams.set(
+          'error',
+          relationError
+            ? getPublicViewErrorMessage(relationError, 'Không thể kiểm tra liên kết võ sinh và lớp lúc này')
+            : 'Võ sinh không thuộc lớp của buổi học'
+        );
+        return res.redirect(`/check-in?${redirectParams.toString()}`);
+      }
+
+      const result = await markAttendancePresent(buoiHocId, voSinhId, 'checkin_qr');
+
+      if (!result.ok) {
+        if (result.reason === 'Võ sinh đã điểm danh có mặt trước đó') {
+          redirectParams.set('already_checked', '1');
+          redirectParams.set('message', 'Bạn đã điểm danh trước đó cho buổi học này');
+          return res.redirect(`/check-in?${redirectParams.toString()}`);
+        }
+
+        redirectParams.set('error', result.reason || 'Không thể xử lý điểm danh lúc này');
+        return res.redirect(`/check-in?${redirectParams.toString()}`);
+      }
+
+      redirectParams.set('message', 'Điểm danh thành công');
+      redirectParams.set('checked_at', new Date().toISOString());
+      return res.redirect(`/check-in?${redirectParams.toString()}`);
+    }
+
     let selectedBuoiHoc = null;
     let voSinhOptions = [];
+    let recentCheckIns = [];
+
+    if (req.currentUser && req.currentUser.role === 'vo_sinh' && req.currentUser.linkedVoSinhId) {
+      recentCheckIns = await loadRecentAttendanceByVoSinh(req.currentUser.linkedVoSinhId);
+    }
 
     if (selectedBuoiHocId) {
       selectedBuoiHoc = buoiHocList.find(function(item) {
@@ -252,13 +343,18 @@ router.get('/', async function(req, res, next) {
     return res.render('check-in', {
       title: 'Điểm danh võ sinh',
       activePage: 'check-in',
+      isVoSinh: Boolean(req.currentUser && req.currentUser.role === 'vo_sinh'),
+      linkedVoSinhMissing: Boolean(req.currentUser && req.currentUser.role === 'vo_sinh' && !req.currentUser.linkedVoSinhId),
       token: inputToken,
       tokenValid: Boolean(tokenVerify && tokenVerify.ok),
       tokenExpiresAt: tokenVerify && tokenVerify.ok && tokenVerify.data ? tokenVerify.data.expiresAt : null,
+      checkedAt: normalizeText(req.query.checked_at),
+      alreadyChecked: normalizeText(req.query.already_checked) === '1',
       buoiHocList,
       selectedBuoiHoc,
       selectedBuoiHocId: selectedBuoiHocId || null,
       voSinhOptions,
+      recentCheckIns,
       forceVoSinhId: req.currentUser && req.currentUser.role === 'vo_sinh' ? req.currentUser.linkedVoSinhId : null,
       message: req.query.message || '',
       errorMessage
@@ -366,6 +462,15 @@ router.post('/', checkInLimiter, async function(req, res) {
         durationMs: Date.now() - startedAt
       });
 
+      if (result.reason === 'Võ sinh đã điểm danh có mặt trước đó') {
+        const searchParams = new URLSearchParams();
+        searchParams.set('buoi_hoc_id', String(buoiHocId));
+        searchParams.set('already_checked', '1');
+        searchParams.set('message', 'Bạn đã điểm danh trước đó cho buổi học này');
+
+        return res.redirect(`/check-in?${searchParams.toString()}`);
+      }
+
       return res.redirect(createRedirectWithMessage(`/check-in?buoi_hoc_id=${buoiHocId}`, '', result.reason));
     }
 
@@ -376,7 +481,12 @@ router.post('/', checkInLimiter, async function(req, res) {
       durationMs: Date.now() - startedAt
     });
 
-    return res.redirect(createRedirectWithMessage(`/check-in?buoi_hoc_id=${buoiHocId}`, 'Điểm danh thành công', ''));
+    const searchParams = new URLSearchParams();
+    searchParams.set('buoi_hoc_id', String(buoiHocId));
+    searchParams.set('message', 'Điểm danh thành công');
+    searchParams.set('checked_at', new Date().toISOString());
+
+    return res.redirect(`/check-in?${searchParams.toString()}`);
   } catch (error) {
     logCheckInEvent(req, 'error', 'submit', 'failed', {
       reason: 'checkin_exception',

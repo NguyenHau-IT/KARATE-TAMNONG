@@ -10,6 +10,18 @@
     <a class="btn btn-outline-secondary" href="/check-in">Làm mới</a>
   </div>
 
+  <% if (isVoSinh) { %>
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
+        <div>
+          <p class="small text-secondary mb-1">Khu vực võ sinh</p>
+          <p class="mb-0">Bạn chỉ cần quét QR từ màn hình lớp. Hệ thống sẽ tự ghi nhận điểm danh cho tài khoản của bạn.</p>
+        </div>
+        <a class="btn btn-sm btn-outline-primary" href="/check-in">Quay về màn chờ quét QR</a>
+      </div>
+    </div>
+  <% } %>
+
   <% if (message) { %>
     <div class="alert alert-success" role="status" aria-live="polite"><%= message %></div>
   <% } %>
@@ -19,6 +31,11 @@
   <% if (!token) { %>
     <div class="alert alert-info" role="status" aria-live="polite">
       Check-in bằng PIN đã ngừng hỗ trợ. Vui lòng quét mã QR từ tab điểm danh trực tiếp.
+    </div>
+  <% } %>
+  <% if (linkedVoSinhMissing) { %>
+    <div class="alert alert-warning" role="alert" aria-live="assertive">
+      Tài khoản võ sinh chưa được liên kết hồ sơ trong hệ thống. Vui lòng liên hệ Admin/HLV để được cấu hình trước khi điểm danh.
     </div>
   <% } %>
 
@@ -45,74 +62,109 @@
     </div>
   </div>
 
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body">
-      <form method="get" action="/check-in" class="row g-3 align-items-end">
-        <div class="col-lg-8">
-          <label class="form-label" for="buoi_hoc_id">Chọn buổi học</label>
-          <select class="form-select" id="buoi_hoc_id" name="buoi_hoc_id">
-            <option value="">Chọn buổi học</option>
-            <% buoiHocList.forEach(function(item) { %>
-              <option value="<%= item.id %>" <%= selectedBuoiHocId === item.id ? 'selected' : '' %>>
-                #<%= item.id %> - <%= item.lop_vo ? item.lop_vo.ten_lop : ('Lớp #' + item.lop_vo_id) %> - <%= item.ngay_hoc %>
-                (<%= item.gio_bat_dau || '--:--' %> - <%= item.gio_ket_thuc || '--:--' %>)
-              </option>
-            <% }) %>
-          </select>
+  <% if (message && (checkedAt || alreadyChecked)) { %>
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
+        <div>
+          <p class="small text-secondary mb-1">Kết quả check-in gần nhất</p>
+          <p class="mb-0 fw-semibold <%= alreadyChecked ? 'text-warning' : 'text-success' %>"><%= message %></p>
+          <% if (selectedBuoiHoc) { %>
+            <p class="small text-secondary mb-0">
+              Buổi #<%= selectedBuoiHoc.id %> — <%= selectedBuoiHoc.ngay_hoc %> (<%= selectedBuoiHoc.gio_bat_dau || '--:--' %> - <%= selectedBuoiHoc.gio_ket_thuc || '--:--' %>)
+            </p>
+          <% } %>
         </div>
-        <div class="col-lg-4 d-grid">
-          <button class="btn btn-primary" type="submit" data-loading-text="Đang tải danh sách...">Tải danh sách võ sinh</button>
+        <div class="text-lg-end">
+          <% if (checkedAt) { %>
+            <p class="small text-secondary mb-1">Thời điểm ghi nhận</p>
+            <p class="mb-2 fw-semibold"><%= new Date(checkedAt).toLocaleString('vi-VN') %></p>
+          <% } %>
+          <a class="btn btn-sm btn-outline-secondary" href="/check-in">Quét QR mới</a>
         </div>
-      </form>
+      </div>
     </div>
-  </div>
+  <% } %>
+
+  <% if (!isVoSinh) { %>
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <form method="get" action="/check-in" class="row g-3 align-items-end">
+          <div class="col-lg-8">
+            <label class="form-label" for="buoi_hoc_id">Chọn buổi học</label>
+            <select class="form-select" id="buoi_hoc_id" name="buoi_hoc_id">
+              <option value="">Chọn buổi học</option>
+              <% buoiHocList.forEach(function(item) { %>
+                <option value="<%= item.id %>" <%= selectedBuoiHocId === item.id ? 'selected' : '' %>>
+                  #<%= item.id %> - <%= item.lop_vo ? item.lop_vo.ten_lop : ('Lớp #' + item.lop_vo_id) %> - <%= item.ngay_hoc %>
+                  (<%= item.gio_bat_dau || '--:--' %> - <%= item.gio_ket_thuc || '--:--' %>)
+                </option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-lg-4 d-grid">
+            <button class="btn btn-primary" type="submit" data-loading-text="Đang tải danh sách...">Tải danh sách võ sinh</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  <% } %>
 
   <% if (selectedBuoiHoc) { %>
     <div class="row g-4">
       <div class="col-lg-7">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-body">
-            <h2 class="h5 mb-3">Xác nhận điểm danh</h2>
+            <h2 class="h5 mb-3"><%= isVoSinh ? 'Thông tin buổi học từ QR' : 'Xác nhận điểm danh' %></h2>
             <div class="mb-3 text-secondary small">
               Buổi: <strong>#<%= selectedBuoiHoc.id %></strong> —
               <strong><%= selectedBuoiHoc.lop_vo ? selectedBuoiHoc.lop_vo.ten_lop : ('Lớp #' + selectedBuoiHoc.lop_vo_id) %></strong>
               (<%= selectedBuoiHoc.ngay_hoc %>, <%= selectedBuoiHoc.gio_bat_dau || '--:--' %> - <%= selectedBuoiHoc.gio_ket_thuc || '--:--' %>)
             </div>
 
-            <% if (!voSinhOptions || !voSinhOptions.length) { %>
+            <% if (isVoSinh) { %>
+              <div class="alert alert-light border" role="status" aria-live="polite">
+                Bạn chỉ cần quét QR. Hệ thống tự nhận diện hồ sơ võ sinh và buổi học để điểm danh.
+              </div>
+            <% } %>
+
+            <% if (!isVoSinh && (!voSinhOptions || !voSinhOptions.length)) { %>
               <div class="alert alert-warning" role="alert" aria-live="polite">
                 Buổi học này hiện chưa có võ sinh khả dụng cho tài khoản của bạn. Vui lòng liên hệ HLV/Admin để kiểm tra danh sách lớp.
               </div>
             <% } %>
 
-            <form method="post" action="/check-in" class="vstack gap-3">
-              <input type="hidden" name="token" value="<%= token || '' %>" />
+            <% if (!isVoSinh) { %>
+              <form method="post" action="/check-in" class="vstack gap-3">
+                <input type="hidden" name="token" value="<%= token || '' %>" />
 
-              <div>
-                <label class="form-label" for="vo_sinh_id">Võ sinh</label>
-                <% if (forceVoSinhId) { %>
-                  <% const selfOption = voSinhOptions && voSinhOptions.length ? voSinhOptions[0] : null; %>
-                  <input type="hidden" name="vo_sinh_id" value="<%= forceVoSinhId %>" />
-                  <input
-                    class="form-control"
-                    value="<%= selfOption ? (selfOption.ho_ten || ('Võ sinh #' + selfOption.vo_sinh_id)) : ('Võ sinh #' + forceVoSinhId) %>"
-                    disabled
-                  />
-                <% } else { %>
-                  <select class="form-select" id="vo_sinh_id" name="vo_sinh_id" required>
-                    <option value="">Chọn võ sinh</option>
-                    <% voSinhOptions.forEach(function(item) { %>
-                      <option value="<%= item.vo_sinh_id %>"><%= item.ho_ten || ('Võ sinh #' + item.vo_sinh_id) %> (#<%= item.vo_sinh_id %>)</option>
-                    <% }) %>
-                  </select>
-                <% } %>
-              </div>
+                <div>
+                  <label class="form-label" for="vo_sinh_id">Võ sinh</label>
+                  <% if (forceVoSinhId) { %>
+                    <% const selfOption = voSinhOptions && voSinhOptions.length ? voSinhOptions[0] : null; %>
+                    <input type="hidden" name="vo_sinh_id" value="<%= forceVoSinhId %>" />
+                    <input
+                      class="form-control"
+                      value="<%= selfOption ? (selfOption.ho_ten || ('Võ sinh #' + selfOption.vo_sinh_id)) : ('Võ sinh #' + forceVoSinhId) %>"
+                      disabled
+                    />
+                  <% } else { %>
+                    <select class="form-select" id="vo_sinh_id" name="vo_sinh_id" required>
+                      <option value="">Chọn võ sinh</option>
+                      <% voSinhOptions.forEach(function(item) { %>
+                        <option value="<%= item.vo_sinh_id %>"><%= item.ho_ten || ('Võ sinh #' + item.vo_sinh_id) %> (#<%= item.vo_sinh_id %>)</option>
+                      <% }) %>
+                    </select>
+                  <% } %>
+                </div>
 
-              <button class="btn btn-success" type="submit" aria-label="Xác nhận điểm danh võ sinh" data-loading-text="Đang điểm danh..." <%= !token || !tokenValid || !voSinhOptions || !voSinhOptions.length ? 'disabled' : '' %>>Điểm danh</button>
-              <% if (!token || !tokenValid || !voSinhOptions || !voSinhOptions.length) { %>
-                <p class="small text-secondary mb-0">Cần QR token hợp lệ và võ sinh khả dụng trước khi xác nhận điểm danh.</p>
-              <% } %>
-            </form>
+                <button id="checkinSubmitBtn" class="btn btn-success" type="submit" aria-label="Xác nhận điểm danh võ sinh" data-loading-text="Đang điểm danh..." <%= !token || !tokenValid || !voSinhOptions || !voSinhOptions.length ? 'disabled' : '' %>>Điểm danh</button>
+                <p id="checkinGuardHint" class="small text-secondary mb-0">
+                  <%= !token || !tokenValid || !voSinhOptions || !voSinhOptions.length
+                    ? 'Cần QR token hợp lệ và võ sinh khả dụng trước khi xác nhận điểm danh.'
+                    : 'Token hợp lệ. Bạn có thể xác nhận điểm danh ngay.' %>
+                </p>
+              </form>
+            <% } %>
           </div>
         </div>
       </div>
@@ -122,12 +174,68 @@
           <div class="card-body">
             <h2 class="h5 mb-3">Cách dùng</h2>
             <ol class="mb-0 text-secondary">
-              <li>Quét QR trên tab điểm danh trực tiếp để vào đúng buổi học.</li>
-              <li>Hệ thống xác thực token tự động và ghi nhận điểm danh.</li>
-              <li>Nếu token hết hạn, nhờ HLV mở lại phiên điểm danh mới.</li>
+              <% if (isVoSinh) { %>
+                <li>Quét QR trên màn hình điểm danh trực tiếp của lớp.</li>
+                <li>Hệ thống tự nhận diện tài khoản võ sinh và ghi nhận điểm danh.</li>
+                <li>Nếu token hết hạn, quét QR mới do HLV mở lại.</li>
+              <% } else { %>
+                <li>Quét QR trên tab điểm danh trực tiếp để vào đúng buổi học.</li>
+                <li>Hệ thống xác thực token tự động và ghi nhận điểm danh.</li>
+                <li>Nếu token hết hạn, nhờ HLV mở lại phiên điểm danh mới.</li>
+              <% } %>
             </ol>
           </div>
         </div>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (isVoSinh) { %>
+    <div class="card border-0 shadow-sm mt-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h5 mb-0">Lịch sử điểm danh gần đây</h2>
+          <span class="badge text-bg-light border text-dark"><%= (recentCheckIns || []).length %> bản ghi</span>
+        </div>
+
+        <% if (!recentCheckIns || !recentCheckIns.length) { %>
+          <div class="alert alert-light border mb-0" role="status" aria-live="polite">
+            Chưa có lịch sử điểm danh. Hãy quét QR để thực hiện điểm danh buổi đầu tiên.
+          </div>
+        <% } else { %>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Buổi</th>
+                  <th>Lớp</th>
+                  <th>Trạng thái</th>
+                  <th>Cập nhật</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% recentCheckIns.forEach(function(item) { %>
+                  <% const buoi = item.buoi_hoc || null; %>
+                  <% const lop = buoi && buoi.lop_vo ? buoi.lop_vo.ten_lop : '--'; %>
+                  <% const statusText = item.trang_thai_diem_danh === 'co_mat'
+                    ? 'Có mặt'
+                    : (item.loai_vang === 'co_phep' ? 'Vắng có phép' : 'Vắng không phép'); %>
+                  <tr>
+                    <td>
+                      <div class="fw-semibold">#<%= item.buoi_hoc_id %></div>
+                      <div class="small text-secondary"><%= buoi ? buoi.ngay_hoc : '--' %> (<%= buoi ? (buoi.gio_bat_dau || '--:--') : '--:--' %> - <%= buoi ? (buoi.gio_ket_thuc || '--:--') : '--:--' %>)</div>
+                    </td>
+                    <td><%= lop %></td>
+                    <td>
+                      <span class="badge <%= item.trang_thai_diem_danh === 'co_mat' ? 'text-bg-success' : 'text-bg-warning' %>"><%= statusText %></span>
+                    </td>
+                    <td><%= item.ngay_cap_nhat ? new Date(item.ngay_cap_nhat).toLocaleString('vi-VN') : '--' %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
       </div>
     </div>
   <% } %>
@@ -137,6 +245,8 @@
   <script>
     (function() {
       const countdownEl = document.getElementById('tokenCountdown');
+      const submitBtn = document.getElementById('checkinSubmitBtn');
+      const guardHint = document.getElementById('checkinGuardHint');
 
       if (!countdownEl) {
         return;
@@ -149,6 +259,12 @@
 
         if (distance <= 0) {
           countdownEl.textContent = 'Token đã hết hạn';
+          if (submitBtn) {
+            submitBtn.disabled = true;
+          }
+          if (guardHint) {
+            guardHint.textContent = 'Token đã hết hạn. Vui lòng quét QR mới để tiếp tục.';
+          }
           return false;
         }
 
