@@ -326,6 +326,7 @@
 <% } %>
 
 <% if (isVoSinh) { %>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script>
     (function() {
       const startBtn = document.getElementById('qrStartBtn');
@@ -345,6 +346,9 @@
       let stream = null;
       let rafId = null;
       let detector = null;
+      let scannerMode = null;
+      const canvasEl = document.createElement('canvas');
+      const canvasCtx = canvasEl.getContext('2d', { willReadFrequently: true });
 
       function setStatus(text) {
         statusEl.textContent = text;
@@ -424,20 +428,38 @@
       }
 
       async function scanFrame() {
-        if (!detector || !videoEl || !stream) {
+        if (!videoEl || !stream) {
           return;
         }
 
         try {
-          const barcodes = await detector.detect(videoEl);
+          if (scannerMode === 'barcode-detector' && detector) {
+            const barcodes = await detector.detect(videoEl);
 
-          if (barcodes && barcodes.length) {
-            const rawValue = barcodes[0].rawValue || '';
-            const token = parseToken(rawValue);
-            stopScanner();
-            setStatus('Đã đọc QR');
-            redirectWithToken(token);
-            return;
+            if (barcodes && barcodes.length) {
+              const rawValue = barcodes[0].rawValue || '';
+              const token = parseToken(rawValue);
+              stopScanner();
+              setStatus('Đã đọc QR');
+              redirectWithToken(token);
+              return;
+            }
+          } else if (scannerMode === 'jsqr' && canvasCtx && videoEl.videoWidth && videoEl.videoHeight) {
+            canvasEl.width = videoEl.videoWidth;
+            canvasEl.height = videoEl.videoHeight;
+            canvasCtx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+            const imageData = canvasCtx.getImageData(0, 0, canvasEl.width, canvasEl.height);
+            const qrResult = window.jsQR
+              ? window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' })
+              : null;
+
+            if (qrResult && qrResult.data) {
+              const token = parseToken(qrResult.data);
+              stopScanner();
+              setStatus('Đã đọc QR');
+              redirectWithToken(token);
+              return;
+            }
           }
         } catch (error) {
           setStatus('Lỗi quét QR');
@@ -449,15 +471,29 @@
       async function startScanner() {
         hideManualError();
 
-        if (!('BarcodeDetector' in window) || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           unsupportedEl.classList.remove('d-none');
           setStatus('Không hỗ trợ camera QR');
           return;
         }
 
-        try {
-          detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-        } catch (error) {
+        scannerMode = null;
+        detector = null;
+
+        if ('BarcodeDetector' in window) {
+          try {
+            detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+            scannerMode = 'barcode-detector';
+          } catch (error) {
+            detector = null;
+          }
+        }
+
+        if (!scannerMode && window.jsQR) {
+          scannerMode = 'jsqr';
+        }
+
+        if (!scannerMode) {
           unsupportedEl.classList.remove('d-none');
           setStatus('Không hỗ trợ camera QR');
           return;
@@ -478,7 +514,7 @@
           containerEl.classList.remove('d-none');
           startBtn.classList.add('d-none');
           stopBtn.classList.remove('d-none');
-          setStatus('Đang quét...');
+          setStatus(scannerMode === 'barcode-detector' ? 'Đang quét (native)...' : 'Đang quét (compat)...');
           rafId = requestAnimationFrame(scanFrame);
         } catch (error) {
           setStatus('Không mở được camera');
