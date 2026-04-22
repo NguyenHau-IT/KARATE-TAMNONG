@@ -16,10 +16,11 @@
 ## Case 2 — Võ sinh check-in bằng QR
 - Bước:
   1. Đăng nhập `vo_sinh`.
-  2. Quét QR (hoặc mở link token) để vào `/check-in?token=...`.
-  3. Bấm check-in.
+  2. Vào `/check-in`, bấm `Mở camera quét QR` và quét QR trên màn hình lớp.
+  3. (Fallback) Nếu thiết bị không hỗ trợ camera, dán link QR vào ô `Dán link QR / token`.
 - Kỳ vọng:
-  - Check-in thành công.
+  - Hệ thống tự redirect sang `/check-in?token=...`.
+  - Check-in tự động thành công, không cần bấm nút điểm danh với role `vo_sinh`.
   - Bản ghi điểm danh là `co_mat`, `ly_do=checkin_qr`.
 
 ## Case 3 — Hết countdown
