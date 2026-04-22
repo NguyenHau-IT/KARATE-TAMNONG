@@ -7,7 +7,7 @@
 
 ## 2) Hiện trạng dự án (snapshot)
 - Kiến trúc hiện tại: `Express + EJS + Supabase` theo hướng view-first.
-- Đã có core nghiệp vụ: quản lý lớp, buổi học, điểm danh, vắng mặt, check-in QR/PIN.
+- Đã có core nghiệp vụ: quản lý lớp, buổi học, điểm danh, vắng mặt, check-in QR.
 - Đã có auth production-oriented: access/refresh, rotation, session revoke, audit.
 - Đã có observability nền: requestId + structured logs + metrics/health endpoint.
 
@@ -51,7 +51,7 @@
 
 ## Phase 3 — Mở rộng nghiệp vụ người dùng võ sinh
 ### FE
-- Nâng trải nghiệm check-in `/check-in`: thông báo rõ token/pin hết hạn, trạng thái buổi học.
+- Nâng trải nghiệm check-in `/check-in`: thông báo rõ token hết hạn, trạng thái buổi học.
 - Hoàn thiện luồng first-login đổi mật khẩu.
 
 ### BE
@@ -60,7 +60,7 @@
 - Bổ sung rate-limit theo tình huống cao điểm nếu cần.
 
 ### Test & DoD
-- Luồng QR/PIN ổn định trong điều kiện mạng yếu vừa phải.
+- Luồng QR ổn định trong điều kiện mạng yếu vừa phải.
 - Không phát sinh ghi nhận điểm danh trùng cho cùng buổi + võ sinh.
 
 ---

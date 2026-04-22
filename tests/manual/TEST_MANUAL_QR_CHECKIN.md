@@ -1,4 +1,4 @@
-# Test thủ công luồng Điểm danh gộp (PIN + QR)
+# Test thủ công luồng Điểm danh QR
 
 ## Điều kiện
 1. Đăng nhập `admin` hoặc `huan_luyen_vien`.
@@ -11,7 +11,7 @@
   2. Bấm `Điểm danh` tại một buổi.
 - Kỳ vọng:
   - Mở tab mới trình chiếu điểm danh.
-  - Có QR lớn + PIN 4 số + countdown.
+  - Có QR lớn + countdown.
 
 ## Case 2 — Võ sinh check-in bằng QR
 - Bước:
@@ -27,8 +27,21 @@
   1. Đợi countdown về 0 trên tab trình chiếu.
   2. Quan sát trạng thái hiển thị.
 - Kỳ vọng:
-  - QR/PIN bị vô hiệu.
-  - PIN bị ẩn và có thanh thông báo hết hạn.
+  - QR bị vô hiệu.
+  - Có thanh thông báo hết hạn.
+
+## Case 3.1 — Không cho check-in nếu thiếu token
+- Bước:
+  1. Mở trực tiếp `/check-in`.
+  2. Chọn võ sinh rồi bấm check-in khi chưa có token.
+- Kỳ vọng:
+  - Bị từ chối với thông báo yêu cầu quét QR.
+
+## Case 3.2 — Route PIN cũ được chuyển hướng
+- Bước:
+  1. Mở `/check-in-pin`.
+- Kỳ vọng:
+  - Được chuyển hướng về `/check-in` với thông báo ngừng hỗ trợ PIN.
 
 ## Case 4 — Mở lại tab Điểm danh tạo phiên mới
 - Bước:

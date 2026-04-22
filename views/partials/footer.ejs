@@ -16,5 +16,52 @@
       integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
       crossorigin="anonymous"
     ></script>
+    <script>
+      (function() {
+        const ALERT_AUTO_HIDE_MS = 5000;
+
+        function initAutoHideAlerts() {
+          const alerts = document.querySelectorAll('.alert.alert-success, .alert.alert-info');
+
+          alerts.forEach(function(alertEl) {
+            if (alertEl.dataset.autoHideInitialized === '1') {
+              return;
+            }
+
+            alertEl.dataset.autoHideInitialized = '1';
+
+            window.setTimeout(function() {
+              alertEl.classList.add('fade');
+              alertEl.classList.remove('show');
+              window.setTimeout(function() {
+                alertEl.remove();
+              }, 200);
+            }, ALERT_AUTO_HIDE_MS);
+          });
+        }
+
+        function initFormSubmitGuard() {
+          const forms = Array.from(document.querySelectorAll('form'));
+
+          forms.forEach(function(form) {
+            form.addEventListener('submit', function() {
+              const submitBtn = form.querySelector('button[type="submit"]');
+
+              if (!submitBtn || submitBtn.disabled) {
+                return;
+              }
+
+              submitBtn.dataset.originalText = submitBtn.innerHTML;
+              submitBtn.innerHTML = submitBtn.dataset.loadingText || 'Đang xử lý...';
+              submitBtn.disabled = true;
+              submitBtn.classList.add('is-submitting');
+            });
+          });
+        }
+
+        initAutoHideAlerts();
+        initFormSubmitGuard();
+      })();
+    </script>
   </body>
 </html>

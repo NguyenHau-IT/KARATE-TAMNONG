@@ -25,7 +25,7 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: function(req) {
-    return req.ip || 'unknown';
+    return rateLimit.ipKeyGenerator(req.ip);
   },
   handler: function(req, res) {
     const nextPath = req.body && req.body.next ? String(req.body.next) : '';
@@ -46,7 +46,7 @@ const refreshLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: function(req) {
-    return req.ip || 'unknown';
+    return rateLimit.ipKeyGenerator(req.ip);
   },
   handler: function(req, res) {
     return res.status(429).json({
@@ -62,10 +62,11 @@ const checkInLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: function(req) {
+    const ip = rateLimit.ipKeyGenerator(req.ip);
     const buoiHocId = req.body && req.body.buoi_hoc_id ? String(req.body.buoi_hoc_id) : '';
     const token = req.body && req.body.token ? String(req.body.token) : '';
 
-    return `${req.ip || 'unknown'}:${buoiHocId || token || 'na'}`;
+    return `${ip}:${buoiHocId || token || 'na'}`;
   },
   handler: function(req, res) {
     const buoiHocId = req.body && req.body.buoi_hoc_id ? String(req.body.buoi_hoc_id) : '';

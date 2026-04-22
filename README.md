@@ -12,14 +12,14 @@ Hệ thống quản lý võ sinh và điểm danh theo hướng Express + EJS + 
 	- `/buoi-hoc` Quản lý buổi học (tạo/xóa)
 	- `/diem-danh` Điểm danh theo buổi học
 	- `/vang-mat` Tab vắng mặt theo buổi học
-	- `/check-in` Điểm danh võ sinh (gộp PIN/QR)
+	- `/check-in` Điểm danh võ sinh bằng QR token
 
 ## Luồng điểm danh mới
 - Tại `/buoi-hoc`, dùng nút **Điểm danh** để mở tab trình chiếu điểm danh cho từng buổi.
-- Tab trình chiếu hiển thị QR phóng to + PIN 4 số + countdown dùng chung.
-- Hết countdown: QR/PIN tự hết hiệu lực, PIN bị ẩn và hiện cảnh báo hết hạn.
+- Tab trình chiếu hiển thị QR phóng to + countdown.
+- Hết countdown: QR tự hết hiệu lực và hiện cảnh báo hết hạn.
 - Có 2 view nghiệp vụ:
-  - View võ sinh tự thao tác: `/check-in` (dùng QR hoặc PIN).
+	- View võ sinh tự thao tác: `/check-in` (dùng QR token).
   - View HLV xử lý thủ công các ca chưa kịp điểm danh: `/diem-danh?buoi_hoc_id=`.
 - Chi tiết: [DIEM_DANH_TRUC_TIEP_FLOW.md](DIEM_DANH_TRUC_TIEP_FLOW.md)
 
@@ -81,6 +81,11 @@ Khuyến nghị chạy thêm theo thứ tự:
 3. Tạo file `.env` theo [.env.example](.env.example)
 4. Chạy dev: `npm run dev`
 
+## Pre-deploy checklist (QR-only)
+- Chạy migration [sql/009_attendance_qr_session.sql](sql/009_attendance_qr_session.sql) trước khi deploy.
+- Chạy kiểm tra nhanh: `npm run predeploy:check`
+- Checklist chi tiết: [docs/testing/DEPLOY_READINESS_QR.md](docs/testing/DEPLOY_READINESS_QR.md)
+
 ## Quy trình phát triển kèm kiểm thử (bắt buộc)
 Quy trình chi tiết đã được chuẩn hóa tại: [docs/testing/QUY_TRINH_DEV_TEST.md](docs/testing/QUY_TRINH_DEV_TEST.md)
 
@@ -106,3 +111,4 @@ Checklist nhanh trước commit:
 - [tests/manual/TEST_MANUAL_AUTH_TOKEN.md](tests/manual/TEST_MANUAL_AUTH_TOKEN.md)
 - [tests/manual/TEST_MANUAL_IMPORT_CSV.md](tests/manual/TEST_MANUAL_IMPORT_CSV.md)
 - [tests/manual/TEST_MANUAL_QR_CHECKIN.md](tests/manual/TEST_MANUAL_QR_CHECKIN.md)
+- [docs/testing/DEPLOY_READINESS_QR.md](docs/testing/DEPLOY_READINESS_QR.md)

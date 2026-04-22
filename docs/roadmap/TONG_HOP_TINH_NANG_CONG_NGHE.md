@@ -100,16 +100,15 @@ Kiểu triển khai hiện tại: **view-first** (form submit + redirect + flash
   - vắng không phép
   - chưa cập nhật
 
-## 4.7 Điểm danh trực tiếp (gộp PIN + QR)
+## 4.7 Điểm danh trực tiếp (QR)
 - Mở từ tab buổi học: `/buoi-hoc/diem-danh/:id`.
 - Sinh phiên điểm danh gồm:
   - QR token
-  - PIN 4 số
-  - countdown dùng chung
-- Võ sinh check-in tại `/check-in` bằng token hoặc PIN.
+  - countdown
+- Võ sinh check-in tại `/check-in` bằng token QR.
 - Chặn check-in trùng `co_mat`.
-- Ghi `ly_do` theo nguồn check-in (`checkin_qr` / `checkin_pin`).
-- Hết hạn thì token/PIN không còn hiệu lực.
+- Ghi `ly_do = checkin_qr`.
+- Hết hạn thì token không còn hiệu lực.
 
 ## 4.8 Tab vắng mặt
 - Màn hình `/vang-mat` theo buổi học.
@@ -159,7 +158,7 @@ Dự án đã có đầy đủ khối tính năng MVP cho một hệ thống đi
 - quản lý dữ liệu nền,
 - quản lý buổi học,
 - điểm danh thủ công,
-- điểm danh trực tiếp PIN/QR,
+- điểm danh trực tiếp QR,
 - tab vắng mặt,
 - auth production với session/refresh rotation.
 

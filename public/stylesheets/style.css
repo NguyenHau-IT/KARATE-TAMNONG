@@ -56,6 +56,18 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
 
+.operational-kpi-card {
+  border-left: 4px solid rgba(13, 110, 253, 0.2);
+}
+
+.operational-kpi-card-success {
+  border-left-color: rgba(25, 135, 84, 0.35);
+}
+
+.operational-kpi-card-warning {
+  border-left-color: rgba(255, 193, 7, 0.55);
+}
+
 .quick-link-card {
   transition: background-color 0.15s ease, transform 0.15s ease;
 }
@@ -63,6 +75,15 @@ body {
 .quick-link-card:hover {
   background-color: var(--bs-white) !important;
   transform: translateY(-1px);
+}
+
+.alert.fade {
+  transition: opacity 0.2s ease;
+}
+
+button.is-submitting {
+  cursor: wait;
+  opacity: 0.9;
 }
 
 a:focus-visible,
